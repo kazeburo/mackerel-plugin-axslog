@@ -81,6 +81,15 @@ func readPos(filename string) (int64, float64, error) {
 	return fp.Pos, duration, nil
 }
 
+func statusLabel(status int) string {
+	switch status {
+	case 499:
+		return "499"
+	default:
+		return string(fmt.Sprintf("%d", status)[0]) + "xx"
+	}
+}
+
 func getStats(opts cmdOpts, logger *zap.Logger) error {
 	lastPos := int64(0)
 	tmpDir := os.TempDir()
@@ -145,7 +154,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	var f64s sort.Float64Slice
 	var tf float64
 	sc := make(map[string]float64)
-	for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "5xx", "total"} {
+	for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx", "total"} {
 		sc[k] = 0
 	}
 	for {
@@ -157,7 +166,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			return errors.Wrap(err, "Something wrong in parse log")
 		}
 
-		sc[string(fmt.Sprintf("%d", status)[0])+"xx"]++
+		sc[statusLabel(status)]++
 		sc["total"]++
 
 		f64s = append(f64s, ptime)
@@ -176,13 +185,13 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	}
 
 	if duration > 0 {
-		for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "5xx"} {
+		for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx"} {
 			fmt.Printf("axslog.access_num_%s.%s_count\t%f\t%d\n", opts.KeyPrefix, k, sc[k]/duration, now)
 		}
 		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", opts.KeyPrefix, sc["total"]/duration, now)
 	}
 	if sc["total"] > 0 {
-		for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "5xx"} {
+		for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx"} {
 			fmt.Printf("axslog.access_ratio_%s.%s_percentage\t%f\t%d\n", opts.KeyPrefix, k, sc[k]/sc["total"], now)
 		}
 	}
