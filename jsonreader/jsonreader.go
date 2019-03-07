@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
+	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
 
@@ -12,6 +13,7 @@ import (
 type Reader struct {
 	bufscan   *bufio.Scanner
 	logger    *zap.Logger
+	json      jsoniter.API
 	ptimeKey  string
 	statusKey string
 }
@@ -19,14 +21,15 @@ type Reader struct {
 // New :
 func New(ir io.Reader, logger *zap.Logger, ptimeKey string, statusKey string) *Reader {
 	bs := bufio.NewScanner(ir)
-	return &Reader{bs, logger, ptimeKey, statusKey}
+	json := jsoniter.ConfigCompatibleWithStandardLibrary
+	return &Reader{bs, logger, json, ptimeKey, statusKey}
 }
 
 // Parse :
 func (r *Reader) Parse() (float64, int, error) {
 	for r.bufscan.Scan() {
 		var d map[string]json.Number
-		err := json.Unmarshal(r.bufscan.Bytes(), &d)
+		err := r.json.Unmarshal(r.bufscan.Bytes(), &d)
 		if err != nil {
 			r.logger.Warn("Failed to parse json. continue", zap.Error(err))
 			continue
