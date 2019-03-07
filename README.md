@@ -1,6 +1,6 @@
 # mackerel-plugin-axslog
 
-mackerel-plugin-axslog alternative. This allow to change response time and status label in log.
+mackerel-plugin-accesslog alternative. This allow to change response time and status label in log.
 And also support JSON and LTSV formated log.
 
 
