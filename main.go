@@ -29,6 +29,9 @@ var Version string
 // MaxReadSize : Maximum size for read
 var MaxReadSize int64 = 500 * 1000 * 1000
 
+// StatusLebels :
+var StatusLebels = []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx", "total"}
+
 type cmdOpts struct {
 	LogFile   string `long:"logfile" description:"path to nginx ltsv logfile" required:"true"`
 	Format    string `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
@@ -154,7 +157,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	var f64s sort.Float64Slice
 	var tf float64
 	sc := make(map[string]float64)
-	for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx", "total"} {
+	for _, k := range StatusLebels {
 		sc[k] = 0
 	}
 	for {
@@ -185,13 +188,19 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	}
 
 	if duration > 0 {
-		for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx"} {
+		for _, k := range StatusLebels {
+			if k == "total" {
+				continue
+			}
 			fmt.Printf("axslog.access_num_%s.%s_count\t%f\t%d\n", opts.KeyPrefix, k, sc[k]/duration, now)
 		}
 		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", opts.KeyPrefix, sc["total"]/duration, now)
 	}
 	if sc["total"] > 0 {
-		for _, k := range []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx"} {
+		for _, k := range StatusLebels {
+			if k == "total" {
+				continue
+			}
 			fmt.Printf("axslog.access_ratio_%s.%s_percentage\t%f\t%d\n", opts.KeyPrefix, k, sc[k]/sc["total"], now)
 		}
 	}
