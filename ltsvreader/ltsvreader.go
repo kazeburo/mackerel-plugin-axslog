@@ -24,7 +24,8 @@ func New(ir io.Reader, logger *zap.Logger, ptimeKey string, statusKey string) *R
 	return &Reader{bs, logger, ptimeKey, statusKey}
 }
 
-func parseLTSV(d1 string) (map[string]string, error) {
+// ParseLTSV :
+func ParseLTSV(d1 string) (map[string]string, error) {
 	c := strings.Count(d1, "\t")
 	if c == 0 {
 		return nil, fmt.Errorf("No TABs in a log")
@@ -49,7 +50,7 @@ func parseLTSV(d1 string) (map[string]string, error) {
 // Parse :
 func (r *Reader) Parse() (float64, int, error) {
 	for r.bufscan.Scan() {
-		d, err := parseLTSV(r.bufscan.Text())
+		d, err := ParseLTSV(r.bufscan.Text())
 		if err != nil {
 			r.logger.Warn("Failed to parse ltsv. continue", zap.Error(err))
 			continue
