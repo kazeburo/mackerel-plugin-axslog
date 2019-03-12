@@ -1,16 +1,18 @@
 package ltsvreader
 
 import (
+	"bufio"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
-	"github.com/najeira/ltsv"
 	"go.uber.org/zap"
 )
 
 // Reader struct
 type Reader struct {
-	ltsv      *ltsv.Reader
+	bufscan   *bufio.Scanner
 	logger    *zap.Logger
 	ptimeKey  string
 	statusKey string
@@ -18,17 +20,37 @@ type Reader struct {
 
 // New :
 func New(ir io.Reader, logger *zap.Logger, ptimeKey string, statusKey string) *Reader {
-	lr := ltsv.NewReader(ir)
-	return &Reader{lr, logger, ptimeKey, statusKey}
+	bs := bufio.NewScanner(ir)
+	return &Reader{bs, logger, ptimeKey, statusKey}
+}
+
+// ParseLTSV :
+func ParseLTSV(d1 string) (map[string]string, error) {
+	c := strings.Count(d1, "\t")
+	if c == 0 {
+		return nil, fmt.Errorf("No TABs in a log")
+	}
+	d := make(map[string]string, c+1)
+	p1 := 0
+	for {
+		p2 := strings.Index(d1[p1:], "\t")
+		if p2 < 0 {
+			break
+		}
+		p3 := strings.Index(d1[p1:p1+p2], ":")
+		if p3 < 0 {
+			break
+		}
+		d[d1[p1:p1+p3]] = d1[p1+p3+1 : p1+p2]
+		p1 += p2 + 1
+	}
+	return d, nil
 }
 
 // Parse :
 func (r *Reader) Parse() (float64, int, error) {
-	for {
-		d, err := r.ltsv.Read()
-		if err == io.EOF {
-			return float64(0), int(0), err
-		}
+	for r.bufscan.Scan() {
+		d, err := ParseLTSV(r.bufscan.Text())
 		if err != nil {
 			r.logger.Warn("Failed to parse ltsv. continue", zap.Error(err))
 			continue
@@ -55,4 +77,9 @@ func (r *Reader) Parse() (float64, int, error) {
 		}
 		return ptime, status, nil
 	}
+	if r.bufscan.Err() != nil {
+		return float64(0), int(0), r.bufscan.Err()
+	}
+	return float64(0), int(0), io.EOF
+
 }
