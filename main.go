@@ -209,6 +209,12 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to update pos file")
 	}
+	logger.Info("Analyzing Succeeded",
+		zap.String("logfile", opts.LogFile),
+		zap.Int64("startPos", lastPos),
+		zap.Int64("endPos", fpr.Pos),
+		zap.Float64("Rows", sc["total"]),
+	)
 	return nil
 }
 
