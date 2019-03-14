@@ -87,15 +87,6 @@ func readPos(filename string) (int64, float64, error) {
 	return fp.Pos, duration, nil
 }
 
-func statusLabel(status int) string {
-	switch status {
-	case 499:
-		return "499"
-	default:
-		return string(fmt.Sprintf("%d", status)[0]) + "xx"
-	}
-}
-
 func statusCode(status int) int {
 	switch status {
 	case 499:
@@ -193,10 +184,6 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 		}
 
 		switch statusCode(status) {
-		case 499:
-			c499++
-		case 1:
-			c1xx++
 		case 2:
 			c2xx++
 		case 3:
@@ -205,6 +192,10 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			c4xx++
 		case 5:
 			c5xx++
+		case 499:
+			c499++
+		case 1:
+			c1xx++
 		}
 		total++
 
