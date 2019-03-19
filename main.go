@@ -1,17 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"math"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"sort"
-	"time"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
@@ -32,9 +27,6 @@ var MaxReadSizeJSON int64 = 500 * 1000 * 1000
 // MaxReadSizeLTSV : Maximum size for read
 var MaxReadSizeLTSV int64 = 1000 * 1000 * 1000
 
-// StatusLebels :
-var StatusLebels = []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx", "total"}
-
 type cmdOpts struct {
 	LogFile   string `long:"logfile" description:"path to nginx ltsv logfile" required:"true"`
 	Format    string `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
@@ -44,92 +36,32 @@ type cmdOpts struct {
 	Version   bool   `short:"v" long:"version" description:"Show version"`
 }
 
-type filePos struct {
-	Pos  int64   `json:"pos"`
-	Time float64 `json:"time"`
-}
-
-func round(f float64) int64 {
-	return int64(math.Round(f)) - 1
-}
-
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	return err == nil
-}
-
-func writePos(filename string, pos int64) error {
-	fp := filePos{pos, float64(time.Now().Unix())}
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	jb, err := json.Marshal(fp)
-	if err != nil {
-		return err
-	}
-	_, err = file.Write(jb)
-	return err
-}
-
-func readPos(filename string) (int64, float64, error) {
-	fp := filePos{}
-	d, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return 0, 0, err
-	}
-	err = json.Unmarshal(d, &fp)
-	if err != nil {
-		return 0, 0, err
-	}
-	duration := float64(time.Now().Unix()) - fp.Time
-	return fp.Pos, duration, nil
-}
-
-func statusCode(status int) int {
-	switch status {
-	case 499:
-		return 499
-	default:
-		return status / 100
-	}
-}
-
-func getStats(opts cmdOpts, logger *zap.Logger) error {
-	lastPos := int64(0)
-	tmpDir := os.TempDir()
-	curUser, _ := user.Current()
-	posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-nginx-ltsv-%s", curUser.Uid, opts.KeyPrefix))
-	duration := float64(0)
-
-	if fileExists(posFile) {
-		last, du, err := readPos(posFile)
-		if err != nil {
-			return errors.Wrap(err, "failed to load pos file")
-		}
-		lastPos = last
-		duration = du
-	}
-
-	stat, err := os.Stat(opts.LogFile)
-	if err != nil {
-		return errors.Wrap(err, "failed to stat log file")
-	}
-
-	if stat.Size() < lastPos {
-		// rotate
-		lastPos = 0
-	}
+func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
 	maxReadSize := int64(0)
-	switch opts.Format {
+	switch format {
 	case "ltsv":
 		maxReadSize = MaxReadSizeLTSV
 	case "json":
 		maxReadSize = MaxReadSizeJSON
 	default:
-		return fmt.Errorf("format %s is not supported", opts.Format)
+		return fmt.Errorf("format %s is not supported", format)
 	}
+
+	stat, err := os.Stat(logFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to stat log file")
+	}
+
+	fstat, err := axslog.FileStat(stat)
+	if err != nil {
+		return errors.Wrap(err, "failed to inode of log file")
+	}
+
+	logger.Info("Analysis start",
+		zap.String("logFile", logFile),
+		zap.Int64("lastPos", lastPos),
+		zap.Int64("Size", stat.Size()),
+	)
 
 	if lastPos == 0 && stat.Size() > maxReadSize {
 		// first time and big logile
@@ -141,13 +73,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 		lastPos = stat.Size()
 	}
 
-	logger.Info("Start analyzing",
-		zap.String("logfile", opts.LogFile),
-		zap.Int64("lastPos", lastPos),
-		zap.Int64("Size", stat.Size()),
-	)
-
-	f, err := os.Open(opts.LogFile)
+	f, err := os.Open(logFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to open log file")
 	}
@@ -158,90 +84,131 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	}
 
 	var ar axslog.Reader
-	switch opts.Format {
+	switch format {
 	case "ltsv":
-		ar = ltsvreader.New(fpr, logger, opts.PtimeKey, opts.StatusKey)
+		ar = ltsvreader.New(fpr, logger, ptimeKey, statusKey)
 	case "json":
-		ar = jsonreader.New(fpr, logger, opts.PtimeKey, opts.StatusKey)
+		ar = jsonreader.New(fpr, logger, ptimeKey, statusKey)
 	}
-	var f64s sort.Float64Slice
-	var tf float64
-	c1xx := float64(0)
-	c2xx := float64(0)
-	c3xx := float64(0)
-	c4xx := float64(0)
-	c499 := float64(0)
-	c5xx := float64(0)
-	total := float64(0)
 
+	total := 0
 	for {
 		ptime, status, errb := ar.Parse()
 		if errb == io.EOF {
 			break
 		}
 		if errb != nil {
-			return errors.Wrap(err, "Something wrong in parse log")
+			return errors.Wrap(errb, "Something wrong in parse log")
 		}
-
-		switch statusCode(status) {
-		case 2:
-			c2xx++
-		case 3:
-			c3xx++
-		case 4:
-			c4xx++
-		case 5:
-			c5xx++
-		case 499:
-			c499++
-		case 1:
-			c1xx++
-		}
+		stats.Append(ptime, status)
 		total++
-
-		f64s = append(f64s, ptime)
-		tf += ptime
 	}
 
-	now := uint64(time.Now().Unix())
-	sort.Sort(f64s)
-	fl := float64(len(f64s))
-	// fmt.Printf("count: %d\n", len(f64s))
-	if len(f64s) > 0 {
-		fmt.Printf("axslog.latency_%s.average\t%f\t%d\n", opts.KeyPrefix, tf/fl, now)
-		fmt.Printf("axslog.latency_%s.99_percentile\t%f\t%d\n", opts.KeyPrefix, f64s[round(fl*0.99)], now)
-		fmt.Printf("axslog.latency_%s.95_percentile\t%f\t%d\n", opts.KeyPrefix, f64s[round(fl*0.95)], now)
-		fmt.Printf("axslog.latency_%s.90_percentile\t%f\t%d\n", opts.KeyPrefix, f64s[round(fl*0.90)], now)
-	}
-
-	if duration > 0 {
-		fmt.Printf("axslog.access_num_%s.1xx_count\t%f\t%d\n", opts.KeyPrefix, c1xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.2xx_count\t%f\t%d\n", opts.KeyPrefix, c2xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.3xx_count\t%f\t%d\n", opts.KeyPrefix, c3xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.4xx_count\t%f\t%d\n", opts.KeyPrefix, c4xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.499_count\t%f\t%d\n", opts.KeyPrefix, c499/duration, now)
-		fmt.Printf("axslog.access_num_%s.5xx_count\t%f\t%d\n", opts.KeyPrefix, c5xx/duration, now)
-		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", opts.KeyPrefix, total/duration, now)
-	}
-	if total > 0 {
-		fmt.Printf("axslog.access_ratio_%s.1xx_percentage\t%f\t%d\n", opts.KeyPrefix, c1xx/total, now)
-		fmt.Printf("axslog.access_ratio_%s.2xx_percentage\t%f\t%d\n", opts.KeyPrefix, c2xx/total, now)
-		fmt.Printf("axslog.access_ratio_%s.3xx_percentage\t%f\t%d\n", opts.KeyPrefix, c3xx/total, now)
-		fmt.Printf("axslog.access_ratio_%s.4xx_percentage\t%f\t%d\n", opts.KeyPrefix, c4xx/total, now)
-		fmt.Printf("axslog.access_ratio_%s.499_percentage\t%f\t%d\n", opts.KeyPrefix, c499/total, now)
-		fmt.Printf("axslog.access_ratio_%s.5xx_percentage\t%f\t%d\n", opts.KeyPrefix, c5xx/total, now)
-	}
-	// postionのupdate
-	err = writePos(posFile, fpr.Pos)
-	if err != nil {
-		return errors.Wrap(err, "failed to update pos file")
-	}
-	logger.Info("Analyzing Succeeded",
-		zap.String("logfile", opts.LogFile),
+	logger.Info("Analysis completed",
+		zap.String("logFile", logFile),
 		zap.Int64("startPos", lastPos),
 		zap.Int64("endPos", fpr.Pos),
-		zap.Float64("Rows", total),
+		zap.Int("Rows", total),
 	)
+	// postionのupdate
+	if posFile != "" {
+		err = axslog.WritePos(posFile, fpr.Pos, fstat)
+		if err != nil {
+			return errors.Wrap(err, "failed to update pos file")
+		}
+	}
+	return nil
+}
+
+func getStats(opts cmdOpts, logger *zap.Logger) error {
+	lastPos := int64(0)
+	lastFstat := &axslog.FStat{}
+	tmpDir := os.TempDir()
+	curUser, _ := user.Current()
+	uid := "0"
+	if curUser != nil {
+		uid = curUser.Uid
+	}
+	posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
+	duration := float64(0)
+	stats := axslog.NewStats()
+
+	if axslog.FileExists(posFile) {
+		l, d, f, err := axslog.ReadPos(posFile)
+		if err != nil {
+			return errors.Wrap(err, "failed to load pos file")
+		}
+		lastPos = l
+		duration = d
+		lastFstat = f
+	}
+
+	stat, err := os.Stat(opts.LogFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to stat log file")
+	}
+	fstat, err := axslog.FileStat(stat)
+	if err != nil {
+		return errors.Wrap(err, "failed to get inode from log file")
+	}
+	if fstat.IsNotRotated(lastFstat) {
+		err := parseLog(
+			opts.LogFile,
+			lastPos,
+			opts.Format,
+			opts.PtimeKey,
+			opts.StatusKey,
+			posFile,
+			stats,
+			logger,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		// rotate!!
+		logger.Info("Detect Rotate")
+		lastFile, err := axslog.SearchFileByInode(filepath.Dir(opts.LogFile), lastFstat)
+		if err != nil {
+			logger.Warn("Could not search previous file",
+				zap.Error(err),
+			)
+		} else {
+			// new file
+			err := parseLog(
+				opts.LogFile,
+				0, // lastPos
+				opts.Format,
+				opts.PtimeKey,
+				opts.StatusKey,
+				posFile,
+				stats,
+				logger,
+			)
+			if err != nil {
+				return err
+			}
+			// previous file
+			err = parseLog(
+				lastFile,
+				lastPos,
+				opts.Format,
+				opts.PtimeKey,
+				opts.StatusKey,
+				"", // no update posfile
+				stats,
+				logger,
+			)
+			if err != nil {
+				logger.Warn("Could not parse previous file",
+					zap.Error(err),
+				)
+			}
+		}
+	}
+
+	stats.Display(opts.KeyPrefix, duration)
+
 	return nil
 }
 
