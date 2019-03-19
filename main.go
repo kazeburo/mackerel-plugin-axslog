@@ -57,8 +57,8 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 		return errors.Wrap(err, "failed to inode of log file")
 	}
 
-	logger.Info("Start analyzing",
-		zap.String("logfile", logFile),
+	logger.Info("Analysis start",
+		zap.String("logFile", logFile),
 		zap.Int64("lastPos", lastPos),
 		zap.Int64("Size", stat.Size()),
 	)
@@ -104,8 +104,8 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 		total++
 	}
 
-	logger.Info("Analyzing Succeeded",
-		zap.String("logfile", logFile),
+	logger.Info("Analysis completed",
+		zap.String("logFile", logFile),
 		zap.Int64("startPos", lastPos),
 		zap.Int64("endPos", fpr.Pos),
 		zap.Int("Rows", total),
