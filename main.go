@@ -47,6 +47,12 @@ type filePos struct {
 	Pos   int64   `json:"pos"`
 	Time  float64 `json:"time"`
 	Inode uint64  `json:"inode"`
+	Dev   uint64  `json:"dev"`
+}
+
+type fStat struct {
+	Inode uint64
+	Dev   uint64
 }
 
 func fileExists(filename string) bool {
@@ -54,15 +60,15 @@ func fileExists(filename string) bool {
 	return err == nil
 }
 
-func fileInode(s os.FileInfo) (uint64, error) {
+func fileStat(s os.FileInfo) (*fStat, error) {
 	s2 := s.Sys().(*syscall.Stat_t)
 	if s2 == nil {
-		return 0, fmt.Errorf("Could not get Inode")
+		return &fStat{}, fmt.Errorf("Could not get Inode")
 	}
-	return s2.Ino, nil
+	return &fStat{s2.Ino, uint64(s2.Dev)}, nil
 }
 
-func searchFileByInode(d string, ino uint64) (string, error) {
+func searchFileByInode(d string, fs *fStat) (string, error) {
 	files, err := ioutil.ReadDir(d)
 	if err != nil {
 		return "", err
@@ -71,15 +77,15 @@ func searchFileByInode(d string, ino uint64) (string, error) {
 		if file.IsDir() {
 			continue
 		}
-		i, _ := fileInode(file)
-		if i == ino {
-			return file.Name(), nil
+		i, _ := fileStat(file)
+		if i.Inode == fs.Inode && i.Dev == fs.Dev {
+			return filepath.Join(d, file.Name()), nil
 		}
 	}
 	return "", fmt.Errorf("Could not get file by inode")
 }
-func writePos(filename string, ino uint64, pos int64) error {
-	fp := filePos{pos, float64(time.Now().Unix()), ino}
+func writePos(filename string, pos int64, fs *fStat) error {
+	fp := filePos{pos, float64(time.Now().Unix()), fs.Inode, fs.Dev}
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -93,18 +99,18 @@ func writePos(filename string, ino uint64, pos int64) error {
 	return err
 }
 
-func readPos(filename string) (int64, float64, uint64, error) {
+func readPos(filename string) (int64, float64, *fStat, error) {
 	fp := filePos{}
 	d, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, &fStat{}, err
 	}
 	err = json.Unmarshal(d, &fp)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, &fStat{}, err
 	}
 	duration := float64(time.Now().Unix()) - fp.Time
-	return fp.Pos, duration, fp.Inode, nil
+	return fp.Pos, duration, &fStat{fp.Inode, fp.Dev}, nil
 }
 
 func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
@@ -123,7 +129,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 		return errors.Wrap(err, "failed to stat log file")
 	}
 
-	inode, err := fileInode(stat)
+	fs, err := fileStat(stat)
 	if err != nil {
 		return errors.Wrap(err, "failed to inode of log file")
 	}
@@ -183,7 +189,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 	)
 	// postionのupdate
 	if posFile != "" {
-		err = writePos(posFile, inode, fpr.Pos)
+		err = writePos(posFile, fpr.Pos, fs)
 		if err != nil {
 			return errors.Wrap(err, "failed to update pos file")
 		}
@@ -193,40 +199,55 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 
 func getStats(opts cmdOpts, logger *zap.Logger) error {
 	lastPos := int64(0)
-	lastInode := uint64(0)
+	lastFs := &fStat{}
 	tmpDir := os.TempDir()
 	curUser, _ := user.Current()
 	uid := "0"
 	if curUser != nil {
 		uid = curUser.Uid
 	}
-	posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v3-%s", uid, opts.KeyPrefix))
+	posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
 	duration := float64(0)
 	stats := axslog.NewStats()
 
 	if fileExists(posFile) {
-		last, du, ino, err := readPos(posFile)
+		last, du, fs, err := readPos(posFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to load pos file")
 		}
 		lastPos = last
 		duration = du
-		lastInode = ino
+		lastFs = fs
 	}
 
 	stat, err := os.Stat(opts.LogFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to stat log file")
 	}
-	inode, err := fileInode(stat)
+	fs, err := fileStat(stat)
 	if err != nil {
 		return errors.Wrap(err, "failed to get inode from log file")
 	}
-	if lastPos != 0 && inode != lastInode {
-		// rotate!!
-		lastFile, err := searchFileByInode(filepath.Dir(opts.LogFile), lastInode)
+	if lastFs.Inode == 0 || lastFs.Dev == 0 || (fs.Inode == lastFs.Inode && fs.Dev == lastFs.Dev) {
+		err := parseLog(
+			opts.LogFile,
+			lastPos,
+			opts.Format,
+			opts.PtimeKey,
+			opts.StatusKey,
+			posFile,
+			stats,
+			logger,
+		)
 		if err != nil {
-			logger.Warn("Detect rotate but could not previous file",
+			return err
+		}
+	} else {
+		// rotate!!
+		logger.Info("Detect Rotate")
+		lastFile, err := searchFileByInode(filepath.Dir(opts.LogFile), lastFs)
+		if err != nil {
+			logger.Warn("Could not search previous file",
 				zap.Error(err),
 			)
 		} else {
@@ -258,20 +279,6 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			if err != nil {
 				return err
 			}
-		}
-	} else {
-		err := parseLog(
-			opts.LogFile,
-			lastPos,
-			opts.Format,
-			opts.PtimeKey,
-			opts.StatusKey,
-			posFile,
-			stats,
-			logger,
-		)
-		if err != nil {
-			return err
 		}
 	}
 
