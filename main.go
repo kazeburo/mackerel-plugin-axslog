@@ -200,7 +200,9 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				logger,
 			)
 			if err != nil {
-				return err
+				logger.Warn("Could not parse previous file",
+					zap.Error(err),
+				)
 			}
 		}
 	}
