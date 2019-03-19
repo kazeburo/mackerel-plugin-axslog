@@ -1,16 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"syscall"
-	"time"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
@@ -31,9 +27,6 @@ var MaxReadSizeJSON int64 = 500 * 1000 * 1000
 // MaxReadSizeLTSV : Maximum size for read
 var MaxReadSizeLTSV int64 = 1000 * 1000 * 1000
 
-// StatusLebels :
-var StatusLebels = []string{"1xx", "2xx", "3xx", "4xx", "499", "5xx", "total"}
-
 type cmdOpts struct {
 	LogFile   string `long:"logfile" description:"path to nginx ltsv logfile" required:"true"`
 	Format    string `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
@@ -41,76 +34,6 @@ type cmdOpts struct {
 	PtimeKey  string `long:"ptime-key" default:"ptime" description:"key name for request_time"`
 	StatusKey string `long:"status-key" default:"status" description:"key name for response status"`
 	Version   bool   `short:"v" long:"version" description:"Show version"`
-}
-
-type filePos struct {
-	Pos   int64   `json:"pos"`
-	Time  float64 `json:"time"`
-	Inode uint64  `json:"inode"`
-	Dev   uint64  `json:"dev"`
-}
-
-type fStat struct {
-	Inode uint64
-	Dev   uint64
-}
-
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	return err == nil
-}
-
-func fileStat(s os.FileInfo) (*fStat, error) {
-	s2 := s.Sys().(*syscall.Stat_t)
-	if s2 == nil {
-		return &fStat{}, fmt.Errorf("Could not get Inode")
-	}
-	return &fStat{s2.Ino, uint64(s2.Dev)}, nil
-}
-
-func searchFileByInode(d string, fs *fStat) (string, error) {
-	files, err := ioutil.ReadDir(d)
-	if err != nil {
-		return "", err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		i, _ := fileStat(file)
-		if i.Inode == fs.Inode && i.Dev == fs.Dev {
-			return filepath.Join(d, file.Name()), nil
-		}
-	}
-	return "", fmt.Errorf("Could not get file by inode")
-}
-func writePos(filename string, pos int64, fs *fStat) error {
-	fp := filePos{pos, float64(time.Now().Unix()), fs.Inode, fs.Dev}
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	jb, err := json.Marshal(fp)
-	if err != nil {
-		return err
-	}
-	_, err = file.Write(jb)
-	return err
-}
-
-func readPos(filename string) (int64, float64, *fStat, error) {
-	fp := filePos{}
-	d, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return 0, 0, &fStat{}, err
-	}
-	err = json.Unmarshal(d, &fp)
-	if err != nil {
-		return 0, 0, &fStat{}, err
-	}
-	duration := float64(time.Now().Unix()) - fp.Time
-	return fp.Pos, duration, &fStat{fp.Inode, fp.Dev}, nil
 }
 
 func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
@@ -129,7 +52,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 		return errors.Wrap(err, "failed to stat log file")
 	}
 
-	fs, err := fileStat(stat)
+	fs, err := axslog.FileStat(stat)
 	if err != nil {
 		return errors.Wrap(err, "failed to inode of log file")
 	}
@@ -189,7 +112,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 	)
 	// postionのupdate
 	if posFile != "" {
-		err = writePos(posFile, fpr.Pos, fs)
+		err = axslog.WritePos(posFile, fpr.Pos, fs)
 		if err != nil {
 			return errors.Wrap(err, "failed to update pos file")
 		}
@@ -199,7 +122,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 
 func getStats(opts cmdOpts, logger *zap.Logger) error {
 	lastPos := int64(0)
-	lastFs := &fStat{}
+	lastFs := &axslog.FStat{}
 	tmpDir := os.TempDir()
 	curUser, _ := user.Current()
 	uid := "0"
@@ -210,8 +133,8 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	duration := float64(0)
 	stats := axslog.NewStats()
 
-	if fileExists(posFile) {
-		last, du, fs, err := readPos(posFile)
+	if axslog.FileExists(posFile) {
+		last, du, fs, err := axslog.ReadPos(posFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to load pos file")
 		}
@@ -224,7 +147,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to stat log file")
 	}
-	fs, err := fileStat(stat)
+	fs, err := axslog.FileStat(stat)
 	if err != nil {
 		return errors.Wrap(err, "failed to get inode from log file")
 	}
@@ -245,7 +168,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	} else {
 		// rotate!!
 		logger.Info("Detect Rotate")
-		lastFile, err := searchFileByInode(filepath.Dir(opts.LogFile), lastFs)
+		lastFile, err := axslog.SearchFileByInode(filepath.Dir(opts.LogFile), lastFs)
 		if err != nil {
 			logger.Warn("Could not search previous file",
 				zap.Error(err),

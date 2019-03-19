@@ -1,10 +1,15 @@
 package axslog
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
+	"syscall"
 	"time"
 	"unsafe"
 )
@@ -25,6 +30,84 @@ type Stats struct {
 	c499  float64
 	c5xx  float64
 	total float64
+}
+
+// FilePos :
+type FilePos struct {
+	Pos   int64   `json:"pos"`
+	Time  float64 `json:"time"`
+	Inode uint64  `json:"inode"`
+	Dev   uint64  `json:"dev"`
+}
+
+// FStat :
+type FStat struct {
+	Inode uint64
+	Dev   uint64
+}
+
+// FileExists :
+func FileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
+}
+
+// FileStat :
+func FileStat(s os.FileInfo) (*FStat, error) {
+	s2 := s.Sys().(*syscall.Stat_t)
+	if s2 == nil {
+		return &FStat{}, fmt.Errorf("Could not get Inode")
+	}
+	return &FStat{s2.Ino, uint64(s2.Dev)}, nil
+}
+
+// SearchFileByInode :
+func SearchFileByInode(d string, fs *FStat) (string, error) {
+	files, err := ioutil.ReadDir(d)
+	if err != nil {
+		return "", err
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		i, _ := FileStat(file)
+		if i.Inode == fs.Inode && i.Dev == fs.Dev {
+			return filepath.Join(d, file.Name()), nil
+		}
+	}
+	return "", fmt.Errorf("Could not get file by inode")
+}
+
+// WritePos :
+func WritePos(filename string, pos int64, fs *FStat) error {
+	fp := FilePos{pos, float64(time.Now().Unix()), fs.Inode, fs.Dev}
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	jb, err := json.Marshal(fp)
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(jb)
+	return err
+}
+
+// ReadPos :
+func ReadPos(filename string) (int64, float64, *FStat, error) {
+	fp := FilePos{}
+	d, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return 0, 0, &FStat{}, err
+	}
+	err = json.Unmarshal(d, &fp)
+	if err != nil {
+		return 0, 0, &FStat{}, err
+	}
+	duration := float64(time.Now().Unix()) - fp.Time
+	return fp.Pos, duration, &FStat{fp.Inode, fp.Dev}, nil
 }
 
 func round(f float64) int64 {
