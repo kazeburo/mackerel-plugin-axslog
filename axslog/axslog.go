@@ -62,12 +62,12 @@ func FileStat(s os.FileInfo) (*FStat, error) {
 }
 
 // IsNotRotated :
-func (fs *FStat) IsNotRotated(lastFs *FStat) bool {
-	return lastFs.Inode == 0 || lastFs.Dev == 0 || (fs.Inode == lastFs.Inode && fs.Dev == lastFs.Dev)
+func (fstat *FStat) IsNotRotated(lastFstat *FStat) bool {
+	return lastFstat.Inode == 0 || lastFstat.Dev == 0 || (fstat.Inode == lastFstat.Inode && fstat.Dev == lastFstat.Dev)
 }
 
 // SearchFileByInode :
-func SearchFileByInode(d string, fs *FStat) (string, error) {
+func SearchFileByInode(d string, fstat *FStat) (string, error) {
 	files, err := ioutil.ReadDir(d)
 	if err != nil {
 		return "", err
@@ -76,17 +76,17 @@ func SearchFileByInode(d string, fs *FStat) (string, error) {
 		if file.IsDir() {
 			continue
 		}
-		i, _ := FileStat(file)
-		if i.Inode == fs.Inode && i.Dev == fs.Dev {
+		s, _ := FileStat(file)
+		if s.Inode == fstat.Inode && s.Dev == fstat.Dev {
 			return filepath.Join(d, file.Name()), nil
 		}
 	}
-	return "", fmt.Errorf("There is no file by inode:%d in %s", fs.Inode, d)
+	return "", fmt.Errorf("There is no file by inode:%d in %s", fstat.Inode, d)
 }
 
 // WritePos :
-func WritePos(filename string, pos int64, fs *FStat) error {
-	fp := FilePos{pos, float64(time.Now().Unix()), fs.Inode, fs.Dev}
+func WritePos(filename string, pos int64, fstat *FStat) error {
+	fp := FilePos{pos, float64(time.Now().Unix()), fstat.Inode, fstat.Dev}
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

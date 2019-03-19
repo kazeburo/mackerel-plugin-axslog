@@ -52,7 +52,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 		return errors.Wrap(err, "failed to stat log file")
 	}
 
-	fs, err := axslog.FileStat(stat)
+	fstat, err := axslog.FileStat(stat)
 	if err != nil {
 		return errors.Wrap(err, "failed to inode of log file")
 	}
@@ -112,7 +112,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 	)
 	// postionのupdate
 	if posFile != "" {
-		err = axslog.WritePos(posFile, fpr.Pos, fs)
+		err = axslog.WritePos(posFile, fpr.Pos, fstat)
 		if err != nil {
 			return errors.Wrap(err, "failed to update pos file")
 		}
