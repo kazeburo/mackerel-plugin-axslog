@@ -61,6 +61,11 @@ func FileStat(s os.FileInfo) (*FStat, error) {
 	return &FStat{s2.Ino, uint64(s2.Dev)}, nil
 }
 
+// IsNotRotated :
+func (fs *FStat) IsNotRotated(lastFs *FStat) bool {
+	return lastFs.Inode == 0 || lastFs.Dev == 0 || (fs.Inode == lastFs.Inode && fs.Dev == lastFs.Dev)
+}
+
 // SearchFileByInode :
 func SearchFileByInode(d string, fs *FStat) (string, error) {
 	files, err := ioutil.ReadDir(d)
@@ -76,7 +81,7 @@ func SearchFileByInode(d string, fs *FStat) (string, error) {
 			return filepath.Join(d, file.Name()), nil
 		}
 	}
-	return "", fmt.Errorf("Could not get file by inode")
+	return "", fmt.Errorf("There is no file by inode:%d in %s", fs.Inode, d)
 }
 
 // WritePos :

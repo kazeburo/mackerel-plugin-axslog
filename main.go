@@ -122,7 +122,7 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 
 func getStats(opts cmdOpts, logger *zap.Logger) error {
 	lastPos := int64(0)
-	lastFs := &axslog.FStat{}
+	lastFstat := &axslog.FStat{}
 	tmpDir := os.TempDir()
 	curUser, _ := user.Current()
 	uid := "0"
@@ -134,24 +134,24 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	stats := axslog.NewStats()
 
 	if axslog.FileExists(posFile) {
-		last, du, fs, err := axslog.ReadPos(posFile)
+		l, d, f, err := axslog.ReadPos(posFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to load pos file")
 		}
-		lastPos = last
-		duration = du
-		lastFs = fs
+		lastPos = l
+		duration = d
+		lastFstat = f
 	}
 
 	stat, err := os.Stat(opts.LogFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to stat log file")
 	}
-	fs, err := axslog.FileStat(stat)
+	fstat, err := axslog.FileStat(stat)
 	if err != nil {
 		return errors.Wrap(err, "failed to get inode from log file")
 	}
-	if lastFs.Inode == 0 || lastFs.Dev == 0 || (fs.Inode == lastFs.Inode && fs.Dev == lastFs.Dev) {
+	if fstat.IsNotRotated(lastFstat) {
 		err := parseLog(
 			opts.LogFile,
 			lastPos,
@@ -168,7 +168,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 	} else {
 		// rotate!!
 		logger.Info("Detect Rotate")
-		lastFile, err := axslog.SearchFileByInode(filepath.Dir(opts.LogFile), lastFs)
+		lastFile, err := axslog.SearchFileByInode(filepath.Dir(opts.LogFile), lastFstat)
 		if err != nil {
 			logger.Warn("Could not search previous file",
 				zap.Error(err),
@@ -177,7 +177,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			// new file
 			err := parseLog(
 				opts.LogFile,
-				0,
+				0, // lastPos
 				opts.Format,
 				opts.PtimeKey,
 				opts.StatusKey,
