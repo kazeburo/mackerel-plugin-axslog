@@ -11,6 +11,7 @@ import (
 
 var ptimeFlag = 1
 var statusFlag = 2
+var allFlagOK = 3
 
 // Reader struct
 type Reader struct {
@@ -37,10 +38,14 @@ func ParseLTSV(d1, ptimeKey, statusKey []byte) (int, []byte, []byte) {
 	var pt []byte
 	var st []byte
 	p1 := 0
+	dlen := len(d1)
 	for {
+		if dlen == p1 {
+			break
+		}
 		p2 := bytes.Index(d1[p1:], bTab)
 		if p2 < 0 {
-			break
+			p2 = dlen - p1 - 1
 		}
 		p3 := bytes.Index(d1[p1:p1+p2], bCol)
 		if p3 < 0 {
@@ -49,11 +54,17 @@ func ParseLTSV(d1, ptimeKey, statusKey []byte) (int, []byte, []byte) {
 		if bytes.Equal(d1[p1:p1+p3], ptimeKey) {
 			pt = d1[p1+p3+1 : p1+p2]
 			c = c | ptimeFlag
+			if c == allFlagOK {
+				break
+			}
 		}
 
 		if bytes.Equal(d1[p1:p1+p3], statusKey) {
 			st = d1[p1+p3+1 : p1+p2]
 			c = c | statusFlag
+			if c == allFlagOK {
+				break
+			}
 		}
 		p1 += p2 + 1
 	}
