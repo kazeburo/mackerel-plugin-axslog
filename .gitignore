@@ -30,4 +30,5 @@ dist/
 
 demo/tmp
 demo/demo.log
+demo/json.log
 demo/mackerel-plugin-*
