@@ -16,19 +16,14 @@ var statusFlag = 2
 type Reader struct {
 	bufscan   *bufio.Scanner
 	logger    *zap.Logger
-	paths     [][]string
-	ptimeKey  string
-	statusKey string
+	ptimeKey  []string
+	statusKey []string
 }
 
 // New :
 func New(ir io.Reader, logger *zap.Logger, ptimeKey string, statusKey string) *Reader {
 	bs := bufio.NewScanner(ir)
-	paths := [][]string{
-		[]string{ptimeKey},
-		[]string{statusKey},
-	}
-	return &Reader{bs, logger, paths, ptimeKey, statusKey}
+	return &Reader{bs, logger, []string{ptimeKey}, []string{statusKey}}
 }
 
 func (r *Reader) parseJSON(data []byte) (int, []byte, []byte) {
@@ -46,7 +41,7 @@ func (r *Reader) parseJSON(data []byte) (int, []byte, []byte) {
 			c = c | statusFlag
 			st = value
 		}
-	}, r.paths...)
+	}, r.ptimeKey, r.statusKey)
 	return c, pt, st
 }
 
@@ -55,11 +50,11 @@ func (r *Reader) Parse() (float64, int, error) {
 	for r.bufscan.Scan() {
 		c, pt, st := r.parseJSON(r.bufscan.Bytes())
 		if c&ptimeFlag == 0 {
-			r.logger.Warn("No ptime in json. continue", zap.String("key", r.ptimeKey))
+			r.logger.Warn("No ptime in json. continue", zap.String("key", r.ptimeKey[0]))
 			continue
 		}
 		if c&statusFlag == 0 {
-			r.logger.Warn("No status in json. continue", zap.String("key", r.statusKey))
+			r.logger.Warn("No status in json. continue", zap.String("key", r.statusKey[0]))
 			continue
 		}
 		ptime, err := axslog.BFloat64(pt)
