@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -36,7 +37,37 @@ type cmdOpts struct {
 	Version   bool   `short:"v" long:"version" description:"Show version"`
 }
 
-func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
+// Parse :
+func parseLog(bs *bufio.Scanner, r axslog.Reader, ptimeKey, statusKey string, logger *zap.Logger) (float64, int, error) {
+	for bs.Scan() {
+		c, pt, st := r.Parse(bs.Bytes())
+		if c&axslog.PtimeFlag == 0 {
+			logger.Warn("No ptime. continue", zap.String("key", ptimeKey))
+			continue
+		}
+		if c&axslog.StatusFlag == 0 {
+			logger.Warn("No status. continue", zap.String("key", statusKey))
+			continue
+		}
+		ptime, err := axslog.BFloat64(pt)
+		if err != nil {
+			logger.Warn("Failed to convert ptime. continue", zap.Error(err))
+			continue
+		}
+		status, err := axslog.BInt(st)
+		if err != nil {
+			logger.Warn("Failed to convert status. continue", zap.Error(err))
+			continue
+		}
+		return ptime, status, nil
+	}
+	if bs.Err() != nil {
+		return float64(0), int(0), bs.Err()
+	}
+	return float64(0), int(0), io.EOF
+}
+
+func parseFile(logFile string, lastPos int64, format, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
 	maxReadSize := int64(0)
 	switch format {
 	case "ltsv":
@@ -86,14 +117,15 @@ func parseLog(logFile string, lastPos int64, format, ptimeKey, statusKey, posFil
 	var ar axslog.Reader
 	switch format {
 	case "ltsv":
-		ar = ltsvreader.New(fpr, logger, ptimeKey, statusKey)
+		ar = ltsvreader.New(ptimeKey, statusKey, logger)
 	case "json":
-		ar = jsonreader.New(fpr, logger, ptimeKey, statusKey)
+		ar = jsonreader.New(ptimeKey, statusKey, logger)
 	}
 
 	total := 0
+	bs := bufio.NewScanner(fpr)
 	for {
-		ptime, status, errb := ar.Parse()
+		ptime, status, errb := parseLog(bs, ar, ptimeKey, statusKey, logger)
 		if errb == io.EOF {
 			break
 		}
@@ -152,7 +184,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 		return errors.Wrap(err, "failed to get inode from log file")
 	}
 	if fstat.IsNotRotated(lastFstat) {
-		err := parseLog(
+		err := parseFile(
 			opts.LogFile,
 			lastPos,
 			opts.Format,
@@ -175,7 +207,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			)
 		} else {
 			// new file
-			err := parseLog(
+			err := parseFile(
 				opts.LogFile,
 				0, // lastPos
 				opts.Format,
@@ -189,7 +221,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				return err
 			}
 			// previous file
-			err = parseLog(
+			err = parseFile(
 				lastFile,
 				lastPos,
 				opts.Format,
