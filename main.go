@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -34,13 +35,20 @@ type cmdOpts struct {
 	KeyPrefix string `long:"key-prefix" description:"Metric key prefix" required:"true"`
 	PtimeKey  string `long:"ptime-key" default:"ptime" description:"key name for request_time"`
 	StatusKey string `long:"status-key" default:"status" description:"key name for response status"`
+	Filter    string `long:"filter" default:"" description:"text for filtering log"`
 	Version   bool   `short:"v" long:"version" description:"Show version"`
 }
 
-// Parse :
-func parseLog(bs *bufio.Scanner, r axslog.Reader, ptimeKey, statusKey string, logger *zap.Logger) (float64, int, error) {
+// parseLog :
+func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statusKey string, logger *zap.Logger) (float64, int, error) {
 	for bs.Scan() {
-		c, pt, st := r.Parse(bs.Bytes())
+		b := bs.Bytes()
+		if len(filter) > 0 {
+			if bytes.Index(b, filter) < 0 {
+				continue
+			}
+		}
+		c, pt, st := r.Parse(b)
 		if c&axslog.PtimeFlag == 0 {
 			logger.Warn("No ptime. continue", zap.String("key", ptimeKey))
 			continue
@@ -67,7 +75,8 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, ptimeKey, statusKey string, lo
 	return float64(0), int(0), io.EOF
 }
 
-func parseFile(logFile string, lastPos int64, format, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
+// parseFile :
+func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
 	maxReadSize := int64(0)
 	switch format {
 	case "ltsv":
@@ -124,8 +133,9 @@ func parseFile(logFile string, lastPos int64, format, ptimeKey, statusKey, posFi
 
 	total := 0
 	bs := bufio.NewScanner(fpr)
+	fb := []byte(filter)
 	for {
-		ptime, status, errb := parseLog(bs, ar, ptimeKey, statusKey, logger)
+		ptime, status, errb := parseLog(bs, ar, fb, ptimeKey, statusKey, logger)
 		if errb == io.EOF {
 			break
 		}
@@ -188,6 +198,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			opts.LogFile,
 			lastPos,
 			opts.Format,
+			opts.Filter,
 			opts.PtimeKey,
 			opts.StatusKey,
 			posFile,
@@ -211,6 +222,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				opts.LogFile,
 				0, // lastPos
 				opts.Format,
+				opts.Filter,
 				opts.PtimeKey,
 				opts.StatusKey,
 				posFile,
@@ -225,6 +237,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				lastFile,
 				lastPos,
 				opts.Format,
+				opts.Filter,
 				opts.PtimeKey,
 				opts.StatusKey,
 				"", // no update posfile
