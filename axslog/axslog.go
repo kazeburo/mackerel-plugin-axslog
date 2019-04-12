@@ -14,9 +14,18 @@ import (
 	"unsafe"
 )
 
+// PtimeFlag : ptime is exists
+var PtimeFlag = 1
+
+// StatusFlag : stattus is exists
+var StatusFlag = 2
+
+// AllFlagOK : all OK
+var AllFlagOK = 3
+
 // Reader :
 type Reader interface {
-	Parse() (float64, int, error)
+	Parse([]byte) (int, []byte, []byte)
 }
 
 // Stats :
