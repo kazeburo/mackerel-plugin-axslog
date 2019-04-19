@@ -193,12 +193,12 @@ func (s *Stats) Display(keyPrefix string, duration float64) {
 		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", keyPrefix, s.total/duration, now)
 	}
 	if s.total > 0 {
-		fmt.Printf("axslog.access_ratio_%s.1xx_percentage\t%f\t%d\n", keyPrefix, s.c1xx/s.total, now)
-		fmt.Printf("axslog.access_ratio_%s.2xx_percentage\t%f\t%d\n", keyPrefix, s.c2xx/s.total, now)
-		fmt.Printf("axslog.access_ratio_%s.3xx_percentage\t%f\t%d\n", keyPrefix, s.c3xx/s.total, now)
-		fmt.Printf("axslog.access_ratio_%s.4xx_percentage\t%f\t%d\n", keyPrefix, s.c4xx/s.total, now)
-		fmt.Printf("axslog.access_ratio_%s.499_percentage\t%f\t%d\n", keyPrefix, s.c499/s.total, now)
-		fmt.Printf("axslog.access_ratio_%s.5xx_percentage\t%f\t%d\n", keyPrefix, s.c5xx/s.total, now)
+		fmt.Printf("axslog.access_ratio_%s.1xx_percentage\t%f\t%d\n", keyPrefix, s.c1xx*100/s.total, now)
+		fmt.Printf("axslog.access_ratio_%s.2xx_percentage\t%f\t%d\n", keyPrefix, s.c2xx*100/s.total, now)
+		fmt.Printf("axslog.access_ratio_%s.3xx_percentage\t%f\t%d\n", keyPrefix, s.c3xx*100/s.total, now)
+		fmt.Printf("axslog.access_ratio_%s.4xx_percentage\t%f\t%d\n", keyPrefix, s.c4xx*100/s.total, now)
+		fmt.Printf("axslog.access_ratio_%s.499_percentage\t%f\t%d\n", keyPrefix, s.c499*100/s.total, now)
+		fmt.Printf("axslog.access_ratio_%s.5xx_percentage\t%f\t%d\n", keyPrefix, s.c5xx*100/s.total, now)
 	}
 }
 
