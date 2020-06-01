@@ -167,58 +167,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	return endTime, nil
 }
 
-func getStats(opts cmdOpts, logger *zap.Logger) error {
-	tmpDir := os.TempDir()
-	curUser, _ := user.Current()
-	uid := "0"
-	if curUser != nil {
-		uid = curUser.Uid
-	}
-
-	logfiles := strings.Split(opts.LogFile, ",")
-
-	if len(logfiles) == 1 {
-		posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
-		stats, err := getStatsFile(opts, posFile, opts.LogFile, logger)
-		if err != nil {
-			return err
-		}
-		stats.Display(opts.KeyPrefix)
-		return nil
-	}
-
-	sCh := make(chan axslog.StatsCh, len(logfiles))
-	defer close(sCh)
-	for _, l := range logfiles {
-		logfile := l
-		go func() {
-			md5 := md5.Sum([]byte(logfile))
-			posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s-%x", uid, opts.KeyPrefix, md5))
-			stats, err := getStatsFile(opts, posFile, logfile, logger)
-			sCh <- axslog.StatsCh{stats, logfile, err}
-		}()
-	}
-	errCnt := 0
-	var statsAll []*axslog.Stats
-	for range logfiles {
-		s := <-sCh
-		if s.Err != nil {
-			errCnt++
-			if len(logfiles) == errCnt {
-				return s.Err
-			}
-			// warnings and ignore
-			logger.Warn("getStats", zap.String("file", s.Logfile), zap.Error(s.Err))
-		} else {
-			statsAll = append(statsAll, s.Stats)
-		}
-	}
-
-	axslog.DisplayAll(statsAll, opts.KeyPrefix)
-	return nil
-}
-
-func getStatsFile(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*axslog.Stats, error) {
+func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*axslog.Stats, error) {
 	stats := axslog.NewStats()
 	lastPos := int64(0)
 	lastFstat := &axslog.FStat{}
@@ -318,6 +267,57 @@ func getStatsFile(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 	}
 	stats.SetDuration(endTime - startTime)
 	return stats, nil
+}
+
+func getStats(opts cmdOpts, logger *zap.Logger) error {
+	tmpDir := os.TempDir()
+	curUser, _ := user.Current()
+	uid := "0"
+	if curUser != nil {
+		uid = curUser.Uid
+	}
+
+	logfiles := strings.Split(opts.LogFile, ",")
+
+	if len(logfiles) == 1 {
+		posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
+		stats, err := getFileStats(opts, posFile, opts.LogFile, logger)
+		if err != nil {
+			return err
+		}
+		stats.Display(opts.KeyPrefix)
+		return nil
+	}
+
+	sCh := make(chan axslog.StatsCh, len(logfiles))
+	defer close(sCh)
+	for _, l := range logfiles {
+		logfile := l
+		go func() {
+			md5 := md5.Sum([]byte(logfile))
+			posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s-%x", uid, opts.KeyPrefix, md5))
+			stats, err := getFileStats(opts, posFile, logfile, logger)
+			sCh <- axslog.StatsCh{stats, logfile, err}
+		}()
+	}
+	errCnt := 0
+	var statsAll []*axslog.Stats
+	for range logfiles {
+		s := <-sCh
+		if s.Err != nil {
+			errCnt++
+			if len(logfiles) == errCnt {
+				return s.Err
+			}
+			// warnings and ignore
+			logger.Warn("getStats", zap.String("file", s.Logfile), zap.Error(s.Err))
+		} else {
+			statsAll = append(statsAll, s.Stats)
+		}
+	}
+
+	axslog.DisplayAll(statsAll, opts.KeyPrefix)
+	return nil
 }
 
 func printVersion() {
