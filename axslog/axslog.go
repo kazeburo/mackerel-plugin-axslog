@@ -30,15 +30,16 @@ type Reader interface {
 
 // Stats :
 type Stats struct {
-	f64s  sort.Float64Slice
-	tf    float64
-	c1xx  float64
-	c2xx  float64
-	c3xx  float64
-	c4xx  float64
-	c499  float64
-	c5xx  float64
-	total float64
+	f64s     sort.Float64Slice
+	tf       float64
+	c1xx     float64
+	c2xx     float64
+	c3xx     float64
+	c4xx     float64
+	c499     float64
+	c5xx     float64
+	total    float64
+	duration float64
 }
 
 // FilePos :
@@ -94,19 +95,20 @@ func SearchFileByInode(d string, fstat *FStat) (string, error) {
 }
 
 // WritePos :
-func WritePos(filename string, pos int64, fstat *FStat) error {
-	fp := FilePos{pos, float64(time.Now().Unix()), fstat.Inode, fstat.Dev}
+func WritePos(filename string, pos int64, fstat *FStat) (float64, error) {
+	now := float64(time.Now().Unix())
+	fp := FilePos{pos, now, fstat.Inode, fstat.Dev}
 	file, err := os.Create(filename)
 	if err != nil {
-		return err
+		return now, err
 	}
 	defer file.Close()
 	jb, err := json.Marshal(fp)
 	if err != nil {
-		return err
+		return now, err
 	}
 	_, err = file.Write(jb)
-	return err
+	return now, err
 }
 
 // ReadPos :
@@ -120,8 +122,8 @@ func ReadPos(filename string) (int64, float64, *FStat, error) {
 	if err != nil {
 		return 0, 0, &FStat{}, err
 	}
-	duration := float64(time.Now().Unix()) - fp.Time
-	return fp.Pos, duration, &FStat{fp.Inode, fp.Dev}, nil
+	startTime := fp.Time
+	return fp.Pos, startTime, &FStat{fp.Inode, fp.Dev}, nil
 }
 
 func round(f float64) int64 {
@@ -170,8 +172,13 @@ func (s *Stats) Append(ptime float64, status int) {
 
 }
 
+// SetDuration :
+func (s *Stats) SetDuration(d float64) {
+	s.duration = d
+}
+
 // Display :
-func (s *Stats) Display(keyPrefix string, duration float64) {
+func (s *Stats) Display(keyPrefix string) {
 	now := uint64(time.Now().Unix())
 	sort.Sort(s.f64s)
 	fl := float64(len(s.f64s))
@@ -183,14 +190,14 @@ func (s *Stats) Display(keyPrefix string, duration float64) {
 		fmt.Printf("axslog.latency_%s.90_percentile\t%f\t%d\n", keyPrefix, s.f64s[round(fl*0.90)], now)
 	}
 
-	if duration > 0 {
-		fmt.Printf("axslog.access_num_%s.1xx_count\t%f\t%d\n", keyPrefix, s.c1xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.2xx_count\t%f\t%d\n", keyPrefix, s.c2xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.3xx_count\t%f\t%d\n", keyPrefix, s.c3xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.4xx_count\t%f\t%d\n", keyPrefix, s.c4xx/duration, now)
-		fmt.Printf("axslog.access_num_%s.499_count\t%f\t%d\n", keyPrefix, s.c499/duration, now)
-		fmt.Printf("axslog.access_num_%s.5xx_count\t%f\t%d\n", keyPrefix, s.c5xx/duration, now)
-		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", keyPrefix, s.total/duration, now)
+	if s.duration > 0 {
+		fmt.Printf("axslog.access_num_%s.1xx_count\t%f\t%d\n", keyPrefix, s.c1xx/s.duration, now)
+		fmt.Printf("axslog.access_num_%s.2xx_count\t%f\t%d\n", keyPrefix, s.c2xx/s.duration, now)
+		fmt.Printf("axslog.access_num_%s.3xx_count\t%f\t%d\n", keyPrefix, s.c3xx/s.duration, now)
+		fmt.Printf("axslog.access_num_%s.4xx_count\t%f\t%d\n", keyPrefix, s.c4xx/s.duration, now)
+		fmt.Printf("axslog.access_num_%s.499_count\t%f\t%d\n", keyPrefix, s.c499/s.duration, now)
+		fmt.Printf("axslog.access_num_%s.5xx_count\t%f\t%d\n", keyPrefix, s.c5xx/s.duration, now)
+		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", keyPrefix, s.total/s.duration, now)
 	}
 	if s.total > 0 {
 		fmt.Printf("axslog.access_ratio_%s.1xx_percentage\t%f\t%d\n", keyPrefix, s.c1xx*100/s.total, now)
@@ -220,4 +227,65 @@ func BFloat64(b []byte) (float64, error) {
 // BInt :
 func BInt(b []byte) (int, error) {
 	return strconv.Atoi(*(*string)(unsafe.Pointer(&b)))
+}
+
+// DisplayAll :
+func DisplayAll(statsAll []*Stats, keyPrefix string) {
+	now := uint64(time.Now().Unix())
+
+	var f64s sort.Float64Slice
+	tf := float64(0)
+	c1xx := float64(0)
+	c2xx := float64(0)
+	c3xx := float64(0)
+	c4xx := float64(0)
+	c499 := float64(0)
+	c5xx := float64(0)
+	total := float64(0)
+	allDutrainNG := true
+	for _, s := range statsAll {
+		for _, pt := range s.f64s {
+			f64s = append(f64s, pt)
+			tf += pt
+		}
+		if s.duration > 0 {
+			allDutrainNG = false
+			c1xx += s.c1xx / s.duration
+			c2xx += s.c2xx / s.duration
+			c3xx += s.c3xx / s.duration
+			c4xx += s.c4xx / s.duration
+			c499 += s.c499 / s.duration
+			c5xx += s.c5xx / s.duration
+			total += s.total / s.duration
+		}
+	}
+	sort.Sort(f64s)
+	fl := float64(len(f64s))
+	// fmt.Printf("count: %d\n", len(f64s))
+	if len(f64s) > 0 {
+		fmt.Printf("axslog.latency_%s.average\t%f\t%d\n", keyPrefix, tf/fl, now)
+		fmt.Printf("axslog.latency_%s.99_percentile\t%f\t%d\n", keyPrefix, f64s[round(fl*0.99)], now)
+		fmt.Printf("axslog.latency_%s.95_percentile\t%f\t%d\n", keyPrefix, f64s[round(fl*0.95)], now)
+		fmt.Printf("axslog.latency_%s.90_percentile\t%f\t%d\n", keyPrefix, f64s[round(fl*0.90)], now)
+	}
+
+	if allDutrainNG == false {
+		fmt.Printf("axslog.access_num_%s.1xx_count\t%f\t%d\n", keyPrefix, c1xx, now)
+		fmt.Printf("axslog.access_num_%s.2xx_count\t%f\t%d\n", keyPrefix, c2xx, now)
+		fmt.Printf("axslog.access_num_%s.3xx_count\t%f\t%d\n", keyPrefix, c3xx, now)
+		fmt.Printf("axslog.access_num_%s.4xx_count\t%f\t%d\n", keyPrefix, c4xx, now)
+		fmt.Printf("axslog.access_num_%s.499_count\t%f\t%d\n", keyPrefix, c499, now)
+		fmt.Printf("axslog.access_num_%s.5xx_count\t%f\t%d\n", keyPrefix, c5xx, now)
+		fmt.Printf("axslog.access_total_%s.count\t%f\t%d\n", keyPrefix, total, now)
+	}
+
+	if total > 0 {
+		fmt.Printf("axslog.access_ratio_%s.1xx_percentage\t%f\t%d\n", keyPrefix, c1xx*100/total, now)
+		fmt.Printf("axslog.access_ratio_%s.2xx_percentage\t%f\t%d\n", keyPrefix, c2xx*100/total, now)
+		fmt.Printf("axslog.access_ratio_%s.3xx_percentage\t%f\t%d\n", keyPrefix, c3xx*100/total, now)
+		fmt.Printf("axslog.access_ratio_%s.4xx_percentage\t%f\t%d\n", keyPrefix, c4xx*100/total, now)
+		fmt.Printf("axslog.access_ratio_%s.499_percentage\t%f\t%d\n", keyPrefix, c499*100/total, now)
+		fmt.Printf("axslog.access_ratio_%s.5xx_percentage\t%f\t%d\n", keyPrefix, c5xx*100/total, now)
+	}
+
 }

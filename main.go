@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
@@ -76,7 +78,8 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statu
 }
 
 // parseFile :
-func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) error {
+func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) (float64, error) {
+	endTime := float64(0)
 	maxReadSize := int64(0)
 	switch format {
 	case "ltsv":
@@ -84,17 +87,17 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	case "json":
 		maxReadSize = MaxReadSizeJSON
 	default:
-		return fmt.Errorf("format %s is not supported", format)
+		return endTime, fmt.Errorf("format %s is not supported", format)
 	}
 
 	stat, err := os.Stat(logFile)
 	if err != nil {
-		return errors.Wrap(err, "failed to stat log file")
+		return endTime, errors.Wrap(err, "failed to stat log file")
 	}
 
 	fstat, err := axslog.FileStat(stat)
 	if err != nil {
-		return errors.Wrap(err, "failed to inode of log file")
+		return endTime, errors.Wrap(err, "failed to inode of log file")
 	}
 
 	logger.Info("Analysis start",
@@ -115,12 +118,12 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 
 	f, err := os.Open(logFile)
 	if err != nil {
-		return errors.Wrap(err, "failed to open log file")
+		return endTime, errors.Wrap(err, "failed to open log file")
 	}
 	defer f.Close()
 	fpr, err := posreader.New(f, lastPos)
 	if err != nil {
-		return errors.Wrap(err, "failed to seek log file")
+		return endTime, errors.Wrap(err, "failed to seek log file")
 	}
 
 	var ar axslog.Reader
@@ -140,7 +143,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 			break
 		}
 		if errb != nil {
-			return errors.Wrap(errb, "Something wrong in parse log")
+			return endTime, errors.Wrap(errb, "Something wrong in parse log")
 		}
 		stats.Append(ptime, status)
 		total++
@@ -154,48 +157,88 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	)
 	// postionのupdate
 	if posFile != "" {
-		err = axslog.WritePos(posFile, fpr.Pos, fstat)
+		endTime, err = axslog.WritePos(posFile, fpr.Pos, fstat)
 		if err != nil {
-			return errors.Wrap(err, "failed to update pos file")
+			return endTime, errors.Wrap(err, "failed to update pos file")
 		}
 	}
-	return nil
+	return endTime, nil
 }
 
 func getStats(opts cmdOpts, logger *zap.Logger) error {
-	lastPos := int64(0)
-	lastFstat := &axslog.FStat{}
+
 	tmpDir := os.TempDir()
+
 	curUser, _ := user.Current()
 	uid := "0"
 	if curUser != nil {
 		uid = curUser.Uid
 	}
-	posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
-	duration := float64(0)
-	stats := axslog.NewStats()
+
+	logfiles := strings.Split(opts.LogFile, ",")
+
+	if len(logfiles) == 1 {
+		stats := axslog.NewStats()
+		posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
+		duration, err := getStatsFile(opts, posFile, opts.LogFile, stats, logger)
+		if err != nil {
+			return err
+		}
+		stats.SetDuration(duration)
+		stats.Display(opts.KeyPrefix)
+	} else {
+		errCnt := 0
+		var statsAll []*axslog.Stats
+		for _, logfile := range logfiles {
+			stats := axslog.NewStats()
+			md5 := md5.Sum([]byte(logfile))
+			posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%x-%s", uid, md5, opts.KeyPrefix))
+			duration, err := getStatsFile(opts, posFile, logfile, stats, logger)
+			if err != nil {
+				errCnt++
+				if len(logfile) == errCnt {
+					return err
+				}
+				// warnings and ignore
+				logger.Error("getStats", zap.String("file", logfile), zap.Error(err))
+			} else {
+				stats.SetDuration(duration)
+				statsAll = append(statsAll, stats)
+			}
+		}
+		axslog.DisplayAll(statsAll, opts.KeyPrefix)
+	}
+
+	return nil
+}
+
+func getStatsFile(opts cmdOpts, posFile, logFile string, stats *axslog.Stats, logger *zap.Logger) (float64, error) {
+	lastPos := int64(0)
+	lastFstat := &axslog.FStat{}
+	startTime := float64(0)
+	endTime := float64(0)
 
 	if axslog.FileExists(posFile) {
-		l, d, f, err := axslog.ReadPos(posFile)
+		l, s, f, err := axslog.ReadPos(posFile)
 		if err != nil {
-			return errors.Wrap(err, "failed to load pos file")
+			return (endTime - startTime), errors.Wrap(err, "failed to load pos file")
 		}
 		lastPos = l
-		duration = d
+		startTime = s
 		lastFstat = f
 	}
 
-	stat, err := os.Stat(opts.LogFile)
+	stat, err := os.Stat(logFile)
 	if err != nil {
-		return errors.Wrap(err, "failed to stat log file")
+		return (endTime - startTime), errors.Wrap(err, "failed to stat log file")
 	}
 	fstat, err := axslog.FileStat(stat)
 	if err != nil {
-		return errors.Wrap(err, "failed to get inode from log file")
+		return (endTime - startTime), errors.Wrap(err, "failed to get inode from log file")
 	}
 	if fstat.IsNotRotated(lastFstat) {
-		err := parseFile(
-			opts.LogFile,
+		endTime, err = parseFile(
+			logFile,
 			lastPos,
 			opts.Format,
 			opts.Filter,
@@ -206,19 +249,19 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			logger,
 		)
 		if err != nil {
-			return err
+			return (endTime - startTime), err
 		}
 	} else {
 		// rotate!!
 		logger.Info("Detect Rotate")
-		lastFile, err := axslog.SearchFileByInode(filepath.Dir(opts.LogFile), lastFstat)
+		lastFile, err := axslog.SearchFileByInode(filepath.Dir(logFile), lastFstat)
 		if err != nil {
 			logger.Warn("Could not search previous file",
 				zap.Error(err),
 			)
 			// new file
-			err := parseFile(
-				opts.LogFile,
+			endTime, err = parseFile(
+				logFile,
 				0, // lastPos
 				opts.Format,
 				opts.Filter,
@@ -229,12 +272,12 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				logger,
 			)
 			if err != nil {
-				return err
+				return (endTime - startTime), err
 			}
 		} else {
 			// new file
-			err := parseFile(
-				opts.LogFile,
+			endTime, err = parseFile(
+				logFile,
 				0, // lastPos
 				opts.Format,
 				opts.Filter,
@@ -245,10 +288,10 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				logger,
 			)
 			if err != nil {
-				return err
+				return (endTime - startTime), err
 			}
 			// previous file
-			err = parseFile(
+			_, err = parseFile(
 				lastFile,
 				lastPos,
 				opts.Format,
@@ -266,10 +309,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 			}
 		}
 	}
-
-	stats.Display(opts.KeyPrefix, duration)
-
-	return nil
+	return (endTime - startTime), nil
 }
 
 func printVersion() {
