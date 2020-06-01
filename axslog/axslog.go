@@ -42,6 +42,13 @@ type Stats struct {
 	duration float64
 }
 
+// StatsCh :
+type StatsCh struct {
+	Stats   *Stats
+	Logfile string
+	Err     error
+}
+
 // FilePos :
 type FilePos struct {
 	Pos   int64   `json:"pos"`
@@ -122,8 +129,7 @@ func ReadPos(filename string) (int64, float64, *FStat, error) {
 	if err != nil {
 		return 0, 0, &FStat{}, err
 	}
-	startTime := fp.Time
-	return fp.Pos, startTime, &FStat{fp.Inode, fp.Dev}, nil
+	return fp.Pos, fp.Time, &FStat{fp.Inode, fp.Dev}, nil
 }
 
 func round(f float64) int64 {
