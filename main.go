@@ -32,7 +32,7 @@ var MaxReadSizeJSON int64 = 500 * 1000 * 1000
 var MaxReadSizeLTSV int64 = 1000 * 1000 * 1000
 
 type cmdOpts struct {
-	LogFile   string `long:"logfile" description:"path to nginx ltsv logfile" required:"true"`
+	LogFile   string `long:"logfile" description:"path to nginx ltsv logfiles. multiple log files can be specified, separated by commas." required:"true"`
 	Format    string `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
 	KeyPrefix string `long:"key-prefix" description:"Metric key prefix" required:"true"`
 	PtimeKey  string `long:"ptime-key" default:"ptime" description:"key name for request_time"`
