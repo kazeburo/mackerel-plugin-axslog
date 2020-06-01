@@ -6,11 +6,11 @@ rm -rf tmp/*
 
 rm -f json.log
 perl ./json.pl json.log 10
-../mackerel-plugin-axslog --key-prefix json --logfile json.log --ptime-key=reqtime --format json ---filter example
+../mackerel-plugin-axslog --key-prefix json --logfile json.log --ptime-key=reqtime --format json
 perl ./json.pl json.log 1200000
 sleep 1
 ls -lh json.log
-time ../mackerel-plugin-axslog --key-prefix json --logfile json.log --ptime-key=reqtime --format json 
+time ../mackerel-plugin-axslog --key-prefix json --logfile json.log --ptime-key=reqtime --format json ---filter example
 
 echo "--------------------"
 
