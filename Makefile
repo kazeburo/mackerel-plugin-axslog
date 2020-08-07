@@ -5,12 +5,6 @@ all: mackerel-plugin-axslog
 
 .PHONY: mackerel-plugin-axslog
 
-bundle:
-	dep ensure
-
-update:
-	dep ensure -update
-
 mackerel-plugin-axslog: main.go
 	go build $(LDFLAGS) -o mackerel-plugin-axslog
 
