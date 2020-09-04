@@ -31,6 +31,11 @@ var MaxReadSizeJSON int64 = 500 * 1000 * 1000
 // MaxReadSizeLTSV : Maximum size for read
 var MaxReadSizeLTSV int64 = 1000 * 1000 * 1000
 
+const (
+	maxScanTokenSize = 1 * 1024 * 1024 // 1MiB
+	startBufSize     = 4096
+)
+
 var f0 = float64(0)
 
 type cmdOpts struct {
@@ -137,6 +142,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 
 	total := 0
 	bs := bufio.NewScanner(fpr)
+	bs.Buffer(make([]byte, startBufSize), maxScanTokenSize)
 	fb := []byte(filter)
 	for {
 		ptime, status, errb := parseLog(bs, ar, fb, ptimeKey, statusKey, logger)
