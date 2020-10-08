@@ -17,6 +17,7 @@ import (
 	"github.com/kazeburo/mackerel-plugin-axslog/jsonreader"
 	"github.com/kazeburo/mackerel-plugin-axslog/ltsvreader"
 	"github.com/kazeburo/mackerel-plugin-axslog/posreader"
+	"github.com/mackerelio/golib/pluginutil"
 	"go.uber.org/zap"
 
 	"github.com/pkg/errors"
@@ -276,7 +277,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 }
 
 func getStats(opts cmdOpts, logger *zap.Logger) error {
-	tmpDir := os.TempDir()
+	tmpDir := pluginutil.PluginWorkDir()
 	curUser, _ := user.Current()
 	uid := "0"
 	if curUser != nil {
