@@ -3,19 +3,17 @@ package jsonreader
 import (
 	"github.com/buger/jsonparser"
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
-	"go.uber.org/zap"
 )
 
 // Reader struct
 type Reader struct {
 	ptimeKey  []string
 	statusKey []string
-	logger    *zap.Logger
 }
 
 // New :
-func New(ptimeKey, statusKey string, logger *zap.Logger) *Reader {
-	return &Reader{[]string{ptimeKey}, []string{statusKey}, logger}
+func New(ptimeKey, statusKey string) *Reader {
+	return &Reader{[]string{ptimeKey}, []string{statusKey}}
 }
 
 // Parse :

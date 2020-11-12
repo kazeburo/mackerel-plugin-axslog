@@ -4,19 +4,17 @@ import (
 	"bytes"
 
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
-	"go.uber.org/zap"
 )
 
 // Reader struct
 type Reader struct {
 	bytePtimeKey  []byte
 	byteStatusKey []byte
-	logger        *zap.Logger
 }
 
 // New :
-func New(ptimeKey, statusKey string, logger *zap.Logger) *Reader {
-	return &Reader{[]byte(ptimeKey), []byte(statusKey), logger}
+func New(ptimeKey, statusKey string) *Reader {
+	return &Reader{[]byte(ptimeKey), []byte(statusKey)}
 }
 
 var bTab = []byte("\t")
