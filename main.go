@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"github.com/kazeburo/mackerel-plugin-axslog/ltsvreader"
 	"github.com/kazeburo/mackerel-plugin-axslog/posreader"
 	"github.com/mackerelio/golib/pluginutil"
-	"go.uber.org/zap"
 
 	"github.com/pkg/errors"
 )
@@ -50,7 +50,7 @@ type cmdOpts struct {
 }
 
 // parseLog :
-func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statusKey string, logger *zap.Logger) (float64, int, error) {
+func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statusKey string) (float64, int, error) {
 	for bs.Scan() {
 		b := bs.Bytes()
 		if len(filter) > 0 {
@@ -60,21 +60,21 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statu
 		}
 		c, pt, st := r.Parse(b)
 		if c&axslog.PtimeFlag == 0 {
-			logger.Warn("No ptime. continue", zap.String("key", ptimeKey))
+			log.Printf("No ptime. continue key:%s", ptimeKey)
 			continue
 		}
 		if c&axslog.StatusFlag == 0 {
-			logger.Warn("No status. continue", zap.String("key", statusKey))
+			log.Printf("No status. continue key:%s", statusKey)
 			continue
 		}
 		ptime, err := axslog.BFloat64(pt)
 		if err != nil {
-			logger.Warn("Failed to convert ptime. continue", zap.Error(err))
+			log.Printf("Failed to convert ptime. continue: %v", err)
 			continue
 		}
 		status, err := axslog.BInt(st)
 		if err != nil {
-			logger.Warn("Failed to convert status. continue", zap.Error(err))
+			log.Printf("Failed to convert status. continue: %v", err)
 			continue
 		}
 		return ptime, status, nil
@@ -86,7 +86,7 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statu
 }
 
 // parseFile :
-func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKey, posFile string, stats *axslog.Stats, logger *zap.Logger) (float64, error) {
+func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKey, posFile string, stats *axslog.Stats) (float64, error) {
 	maxReadSize := int64(0)
 	switch format {
 	case "ltsv":
@@ -107,11 +107,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 		return f0, errors.Wrap(err, "failed to inode of log file")
 	}
 
-	logger.Info("Analysis start",
-		zap.String("logFile", logFile),
-		zap.Int64("lastPos", lastPos),
-		zap.Int64("Size", stat.Size()),
-	)
+	log.Printf("Analysis start logFile:%s lastPos:%d Size:%d", logFile, lastPos, stat.Size())
 
 	if lastPos == 0 && stat.Size() > maxReadSize {
 		// first time and big logile
@@ -136,9 +132,9 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	var ar axslog.Reader
 	switch format {
 	case "ltsv":
-		ar = ltsvreader.New(ptimeKey, statusKey, logger)
+		ar = ltsvreader.New(ptimeKey, statusKey)
 	case "json":
-		ar = jsonreader.New(ptimeKey, statusKey, logger)
+		ar = jsonreader.New(ptimeKey, statusKey)
 	}
 
 	total := 0
@@ -146,7 +142,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	bs.Buffer(make([]byte, startBufSize), maxScanTokenSize)
 	fb := []byte(filter)
 	for {
-		ptime, status, errb := parseLog(bs, ar, fb, ptimeKey, statusKey, logger)
+		ptime, status, errb := parseLog(bs, ar, fb, ptimeKey, statusKey)
 		if errb == io.EOF {
 			break
 		}
@@ -157,12 +153,8 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 		total++
 	}
 
-	logger.Info("Analysis completed",
-		zap.String("logFile", logFile),
-		zap.Int64("startPos", lastPos),
-		zap.Int64("endPos", fpr.Pos),
-		zap.Int("Rows", total),
-	)
+	log.Printf("Analysis completed logFile:%s startPos:%d endPos:%d Rows:%d", logFile, lastPos, fpr.Pos, total)
+
 	// postionのupdate
 	endTime := float64(0)
 	if posFile != "" {
@@ -174,7 +166,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	return endTime, nil
 }
 
-func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*axslog.Stats, error) {
+func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) {
 	stats := axslog.NewStats()
 	lastPos := int64(0)
 	lastFstat := &axslog.FStat{}
@@ -209,19 +201,16 @@ func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 			opts.StatusKey,
 			posFile,
 			stats,
-			logger,
 		)
 		if err != nil {
 			return stats, err
 		}
 	} else {
 		// rotate!!
-		logger.Info("Detect Rotate")
+		log.Printf("Detect Rotate")
 		lastFile, err := axslog.SearchFileByInode(filepath.Dir(logFile), lastFstat)
 		if err != nil {
-			logger.Warn("Could not search previous file",
-				zap.Error(err),
-			)
+			log.Printf("Could not search previous file: %v", err)
 			// new file
 			endTime, err = parseFile(
 				logFile,
@@ -232,7 +221,6 @@ func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 				opts.StatusKey,
 				posFile,
 				stats,
-				logger,
 			)
 			if err != nil {
 				return stats, err
@@ -248,7 +236,6 @@ func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 				opts.StatusKey,
 				posFile,
 				stats,
-				logger,
 			)
 			if err != nil {
 				return stats, err
@@ -263,12 +250,9 @@ func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 				opts.StatusKey,
 				"", // no update posfile
 				stats,
-				logger,
 			)
 			if err != nil {
-				logger.Warn("Could not parse previous file",
-					zap.Error(err),
-				)
+				log.Printf("Could not parse previous file: %v", err)
 			}
 		}
 	}
@@ -276,7 +260,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string, logger *zap.Logger) (*a
 	return stats, nil
 }
 
-func getStats(opts cmdOpts, logger *zap.Logger) error {
+func getStats(opts cmdOpts) error {
 	tmpDir := pluginutil.PluginWorkDir()
 	curUser, _ := user.Current()
 	uid := "0"
@@ -288,7 +272,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 
 	if len(logfiles) == 1 {
 		posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s", uid, opts.KeyPrefix))
-		stats, err := getFileStats(opts, posFile, opts.LogFile, logger)
+		stats, err := getFileStats(opts, posFile, opts.LogFile)
 		if err != nil {
 			return err
 		}
@@ -303,7 +287,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 		go func() {
 			md5 := md5.Sum([]byte(logfile))
 			posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s-%x", uid, opts.KeyPrefix, md5))
-			stats, err := getFileStats(opts, posFile, logfile, logger)
+			stats, err := getFileStats(opts, posFile, logfile)
 			sCh <- axslog.StatsCh{stats, logfile, err}
 		}()
 	}
@@ -317,7 +301,7 @@ func getStats(opts cmdOpts, logger *zap.Logger) error {
 				return s.Err
 			}
 			// warnings and ignore
-			logger.Warn("getStats", zap.String("file", s.Logfile), zap.Error(s.Err))
+			log.Printf("getStats file:%s :%v", s.Logfile, s.Err)
 		} else {
 			statsAll = append(statsAll, s.Stats)
 		}
@@ -352,11 +336,9 @@ func _main() int {
 		printVersion()
 		return 0
 	}
-
-	logger, _ := zap.NewProduction()
-	err = getStats(opts, logger)
+	err = getStats(opts)
 	if err != nil {
-		logger.Error("getStats", zap.Error(err))
+		log.Printf("getStats: %v", err)
 		return 1
 	}
 	return 0
