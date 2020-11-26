@@ -23,8 +23,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Version by Makefile
-var Version string
+var version string
 
 // MaxReadSizeJSON : Maximum size for read
 var MaxReadSizeJSON int64 = 500 * 1000 * 1000
@@ -316,7 +315,7 @@ func printVersion() {
 Compiler: %s %s
 `,
 		os.Args[0],
-		Version,
+		version,
 		runtime.Compiler,
 		runtime.Version())
 }
@@ -329,12 +328,12 @@ func _main() int {
 	opts := cmdOpts{}
 	psr := flags.NewParser(&opts, flags.Default)
 	_, err := psr.Parse()
-	if err != nil {
-		return 1
-	}
 	if opts.Version {
 		printVersion()
 		return 0
+	}
+	if err != nil {
+		return 1
 	}
 	err = getStats(opts)
 	if err != nil {
