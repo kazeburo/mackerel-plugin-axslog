@@ -1,7 +1,9 @@
 # mackerel-plugin-axslog
 
-mackerel-plugin-accesslog alternative. This allow to change response time and status label in log.
-And also support JSON and LTSV formated log.
+mackerel-plugin-accesslog alternative with great perfomance.
+axslog supports JSON and LTSV formated log and allows to change response time and status label in log.
+
+blog Entry(in japanese): https://kazeburo.hatenablog.com/entry/2019/04/05/093000
 
 
 ## Usage
@@ -23,3 +25,7 @@ Application Options:
 Help Options:
   -h, --help        Show this help message
 ```
+
+## Install
+
+Please download release page or `mkr plugin install kazeburo/mackerel-plugin-axslog`.
