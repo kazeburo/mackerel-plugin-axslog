@@ -30,7 +30,7 @@ type CmdOpts struct {
 	PtimeKey         string `long:"ptime-key" default:"ptime" description:"key name for request_time"`
 	StatusKey        string `long:"status-key" default:"status" description:"key name for response status"`
 	Filter           string `long:"filter" default:"" description:"text for filtering log"`
-	SkipUntilBracket bool   `long:"skip-until-json" description:"skip reading until first { in json log"`
+	SkipUntilBracket bool   `long:"skip-until-json" description:"skip reading until first { for json log with plain text header"`
 	Version          bool   `short:"v" long:"version" description:"Show version"`
 	filterByte       *[]byte
 }
