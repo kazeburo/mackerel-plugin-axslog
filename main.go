@@ -38,32 +38,31 @@ const (
 
 var f0 = float64(0)
 
-type cmdOpts struct {
-	LogFile   string `long:"logfile" description:"path to nginx ltsv logfiles. multiple log files can be specified, separated by commas." required:"true"`
-	Format    string `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
-	KeyPrefix string `long:"key-prefix" description:"Metric key prefix" required:"true"`
-	PtimeKey  string `long:"ptime-key" default:"ptime" description:"key name for request_time"`
-	StatusKey string `long:"status-key" default:"status" description:"key name for response status"`
-	Filter    string `long:"filter" default:"" description:"text for filtering log"`
-	Version   bool   `short:"v" long:"version" description:"Show version"`
-}
-
 // parseLog :
-func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statusKey string) (float64, int, error) {
+var bracketByte = []byte("{")
+
+func parseLog(bs *bufio.Scanner, r axslog.Reader, opts axslog.CmdOpts) (float64, int, error) {
+	filter := []byte(opts.Filter)
 	for bs.Scan() {
 		b := bs.Bytes()
 		if len(filter) > 0 {
-			if bytes.Index(b, filter) < 0 {
+			if !bytes.Contains(b, filter) {
 				continue
+			}
+		}
+		if opts.SkipUntilBracket {
+			i := bytes.Index(b, bracketByte)
+			if i > 0 {
+				b = b[i:]
 			}
 		}
 		c, pt, st := r.Parse(b)
 		if c&axslog.PtimeFlag == 0 {
-			log.Printf("No ptime. continue key:%s", ptimeKey)
+			log.Printf("No ptime. continue key:%s", opts.PtimeKey)
 			continue
 		}
 		if c&axslog.StatusFlag == 0 {
-			log.Printf("No status. continue key:%s", statusKey)
+			log.Printf("No status. continue key:%s", opts.StatusKey)
 			continue
 		}
 		ptime, err := axslog.BFloat64(pt)
@@ -85,15 +84,15 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, filter []byte, ptimeKey, statu
 }
 
 // parseFile :
-func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKey, posFile string, stats *axslog.Stats) (float64, error) {
+func parseFile(logFile string, lastPos int64, opts axslog.CmdOpts, posFile string, stats *axslog.Stats) (float64, error) {
 	maxReadSize := int64(0)
-	switch format {
+	switch opts.Format {
 	case "ltsv":
 		maxReadSize = MaxReadSizeLTSV
 	case "json":
 		maxReadSize = MaxReadSizeJSON
 	default:
-		return f0, fmt.Errorf("format %s is not supported", format)
+		return f0, fmt.Errorf("format %s is not supported", opts.Format)
 	}
 
 	stat, err := os.Stat(logFile)
@@ -129,19 +128,18 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	}
 
 	var ar axslog.Reader
-	switch format {
+	switch opts.Format {
 	case "ltsv":
-		ar = ltsvreader.New(ptimeKey, statusKey)
+		ar = ltsvreader.New(opts.PtimeKey, opts.StatusKey)
 	case "json":
-		ar = jsonreader.New(ptimeKey, statusKey)
+		ar = jsonreader.New(opts.PtimeKey, opts.StatusKey)
 	}
 
 	total := 0
 	bs := bufio.NewScanner(fpr)
 	bs.Buffer(make([]byte, startBufSize), maxScanTokenSize)
-	fb := []byte(filter)
 	for {
-		ptime, status, errb := parseLog(bs, ar, fb, ptimeKey, statusKey)
+		ptime, status, errb := parseLog(bs, ar, opts)
 		if errb == io.EOF {
 			break
 		}
@@ -165,7 +163,7 @@ func parseFile(logFile string, lastPos int64, format, filter, ptimeKey, statusKe
 	return endTime, nil
 }
 
-func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) {
+func getFileStats(opts axslog.CmdOpts, posFile, logFile string) (*axslog.Stats, error) {
 	stats := axslog.NewStats()
 	lastPos := int64(0)
 	lastFstat := &axslog.FStat{}
@@ -194,10 +192,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) 
 		endTime, err = parseFile(
 			logFile,
 			lastPos,
-			opts.Format,
-			opts.Filter,
-			opts.PtimeKey,
-			opts.StatusKey,
+			opts,
 			posFile,
 			stats,
 		)
@@ -214,10 +209,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) 
 			endTime, err = parseFile(
 				logFile,
 				0, // lastPos
-				opts.Format,
-				opts.Filter,
-				opts.PtimeKey,
-				opts.StatusKey,
+				opts,
 				posFile,
 				stats,
 			)
@@ -229,10 +221,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) 
 			endTime, err = parseFile(
 				logFile,
 				0, // lastPos
-				opts.Format,
-				opts.Filter,
-				opts.PtimeKey,
-				opts.StatusKey,
+				opts,
 				posFile,
 				stats,
 			)
@@ -243,10 +232,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) 
 			_, err = parseFile(
 				lastFile,
 				lastPos,
-				opts.Format,
-				opts.Filter,
-				opts.PtimeKey,
-				opts.StatusKey,
+				opts,
 				"", // no update posfile
 				stats,
 			)
@@ -259,7 +245,7 @@ func getFileStats(opts cmdOpts, posFile, logFile string) (*axslog.Stats, error) 
 	return stats, nil
 }
 
-func getStats(opts cmdOpts) error {
+func getStats(opts axslog.CmdOpts) error {
 	tmpDir := pluginutil.PluginWorkDir()
 	curUser, _ := user.Current()
 	uid := "0"
@@ -287,7 +273,11 @@ func getStats(opts cmdOpts) error {
 			md5 := md5.Sum([]byte(logfile))
 			posFile := filepath.Join(tmpDir, fmt.Sprintf("%s-axslog-v4-%s-%x", uid, opts.KeyPrefix, md5))
 			stats, err := getFileStats(opts, posFile, logfile)
-			sCh <- axslog.StatsCh{stats, logfile, err}
+			sCh <- axslog.StatsCh{
+				Stats:   stats,
+				Logfile: logfile,
+				Err:     err,
+			}
 		}()
 	}
 	errCnt := 0
@@ -325,7 +315,7 @@ func main() {
 }
 
 func _main() int {
-	opts := cmdOpts{}
+	opts := axslog.CmdOpts{}
 	psr := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 	_, err := psr.Parse()
 	if opts.Version {

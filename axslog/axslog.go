@@ -23,6 +23,18 @@ var StatusFlag = 2
 // AllFlagOK : all OK
 var AllFlagOK = 3
 
+type CmdOpts struct {
+	LogFile          string `long:"logfile" description:"path to nginx ltsv logfiles. multiple log files can be specified, separated by commas." required:"true"`
+	Format           string `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
+	KeyPrefix        string `long:"key-prefix" description:"Metric key prefix" required:"true"`
+	PtimeKey         string `long:"ptime-key" default:"ptime" description:"key name for request_time"`
+	StatusKey        string `long:"status-key" default:"status" description:"key name for response status"`
+	Filter           string `long:"filter" default:"" description:"text for filtering log"`
+	SkipUntilBracket bool   `long:"skip-until-json" description:"skip reading until first { in json log"`
+	Version          bool   `short:"v" long:"version" description:"Show version"`
+	filterByte       *[]byte
+}
+
 // Reader :
 type Reader interface {
 	Parse([]byte) (int, []byte, []byte)
