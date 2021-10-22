@@ -62,7 +62,7 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, opts axslog.CmdOpts) (float64,
 			continue
 		}
 		if c&axslog.StatusFlag == 0 {
-			log.Printf("No status. continue key:%s", opts.StatusKey)
+			log.Printf("No status. continue key:%v", opts.StatusKeys)
 			continue
 		}
 		ptime, err := axslog.BFloat64(pt)
@@ -130,9 +130,9 @@ func parseFile(logFile string, lastPos int64, opts axslog.CmdOpts, posFile strin
 	var ar axslog.Reader
 	switch opts.Format {
 	case "ltsv":
-		ar = ltsvreader.New(opts.PtimeKey, opts.StatusKey)
+		ar = ltsvreader.New(opts.PtimeKey, opts.StatusKeys)
 	case "json":
-		ar = jsonreader.New(opts.PtimeKey, opts.StatusKey)
+		ar = jsonreader.New(opts.PtimeKey, opts.StatusKeys)
 	}
 
 	total := 0
