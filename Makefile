@@ -1,4 +1,4 @@
-VERSION=0.2.11
+VERSION=0.3.0
 LDFLAGS=-ldflags "-w -s -X main.version=${VERSION}"
 
 all: mackerel-plugin-axslog
