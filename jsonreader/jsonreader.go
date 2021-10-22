@@ -1,37 +1,53 @@
 package jsonreader
 
 import (
+	"bytes"
+
 	"github.com/buger/jsonparser"
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
 )
 
 // Reader struct
 type Reader struct {
-	ptimeKey  []string
-	statusKey []string
+	keys [][]string
 }
 
 // New :
-func New(ptimeKey, statusKey string) *Reader {
-	return &Reader{[]string{ptimeKey}, []string{statusKey}}
+func New(ptimeKey string, statusKeys []string) *Reader {
+	keys := make([][]string, 0)
+	keys = append(keys, []string{ptimeKey})
+	for _, stKey := range statusKeys {
+		keys = append(keys, []string{stKey})
+	}
+	return &Reader{keys}
 }
+
+var bHif = []byte("-")
 
 // Parse :
 func (r *Reader) Parse(data []byte) (int, []byte, []byte) {
 	c := 0
 	var pt []byte
 	var st []byte
+	stIndex := len(r.keys)
 	jsonparser.EachKey(data, func(idx int, value []byte, vt jsonparser.ValueType, err error) {
-		switch idx {
-		case 0:
+		// `-` はskip
+		if bytes.Equal(value, bHif) {
+			return
+		}
+		switch {
+		case idx == 0:
 			//ptime
 			c = c | axslog.PtimeFlag
 			pt = value
-		case 1:
+		case idx > 0:
 			//status
 			c = c | axslog.StatusFlag
-			st = value
+			if idx < stIndex {
+				stIndex = idx
+				st = value
+			}
 		}
-	}, r.ptimeKey, r.statusKey)
+	}, r.keys...)
 	return c, pt, st
 }
