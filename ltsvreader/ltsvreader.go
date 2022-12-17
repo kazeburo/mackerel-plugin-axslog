@@ -49,7 +49,8 @@ PARSE_LTSV:
 
 		// `-` はskip
 		if bytes.Equal(d1[p1+p3+1:p1+p2], bHif) {
-			break
+			p1 += p2 + 1
+			continue
 		}
 
 		if bytes.Equal(d1[p1:p1+p3], r.bytePtimeKey) {
