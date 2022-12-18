@@ -1,12 +1,9 @@
-github.com/buger/jsonparser v1.1.2-0.20211125204129-a6f867eb7787 h1:nTTJ24gYTpbDFkNwCRaUDHTZM4k0ccxFdHNUYOJRpaQ=
-github.com/buger/jsonparser v1.1.2-0.20211125204129-a6f867eb7787/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
 github.com/buger/jsonparser v1.1.2-0.20220418200129-61b32cfdfa0f h1:U16k/nN3gIXMF7pyy68OPI8VVdTIn2spnP7VMlEU9w0=
 github.com/buger/jsonparser v1.1.2-0.20220418200129-61b32cfdfa0f/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
+github.com/go-test/deep v1.1.0 h1:WOcxcdHcvdgThNXjw0t76K42FXTU7HpNQWHpA2HHNlg=
 github.com/go-test/deep v1.1.0/go.mod h1:5C2ZWiW0ErCdrYzpqxLbTX7MG14M9iiw8DgHncVwcsE=
 github.com/jessevdk/go-flags v1.5.0 h1:1jKYvbxEjfUl0fmqTCOfonvskHHXMjBySTLW4y9LFvc=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
-github.com/kazeburo/ltsvparser v0.1.1 h1:idgCTUGN/wtsUzhUdgvIhDj5C7QfVd4NguDybzp7MIc=
-github.com/kazeburo/ltsvparser v0.1.1/go.mod h1:eO7lPSUzkFXDVt4MPVGe9AHvCE7CbAGr0o3dfC7zXe8=
 github.com/kazeburo/ltsvparser v0.2.0 h1:+G2YX/UYKZTrw5Dot4ezmv4Kk/zkUo+F1F0NxBEXcmc=
 github.com/kazeburo/ltsvparser v0.2.0/go.mod h1:eO7lPSUzkFXDVt4MPVGe9AHvCE7CbAGr0o3dfC7zXe8=
 github.com/mackerelio/golib v1.2.1 h1:SDcDn6Jw3p9bi1N0bg1Z/ilG5qcBB23qL8xNwrU0gg4=
@@ -14,7 +11,5 @@ github.com/mackerelio/golib v1.2.1/go.mod h1:b8ZaapsHGH1FlEJlCqfD98CqafLeyMevyAT
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20211020174200-9d6173849985 h1:LOlKVhfDyahgmqa97awczplwkjzNaELFg3zRIJ13RYo=
-golang.org/x/sys v0.0.0-20211020174200-9d6173849985/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.3.0 h1:w8ZOecv6NaNa/zC8944JTU3vz4u6Lagfk4RPQxv92NQ=
 golang.org/x/sys v0.3.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
