@@ -32,7 +32,7 @@ func (r *Reader) Parse(data []byte) (int, []byte, []byte) {
 	stIndex := len(r.keys)
 	jsonparser.EachKey(data, func(idx int, value []byte, vt jsonparser.ValueType, err error) {
 		// `-` はskip
-		if bytes.Equal(value, bHif) {
+		if bytes.Equal(value, bHif) || len(value) == 0 {
 			return
 		}
 		switch {

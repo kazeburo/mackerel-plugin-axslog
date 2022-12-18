@@ -7,7 +7,8 @@ rm -f demo.log
 perl ./demo.pl demo.log 10
 ../mackerel-plugin-axslog --key-prefix demo --logfile demo.log --ptime-key=reqtime
 perl ./demo.pl demo.log 1200000
-sleep 1
+#sleep 1
+echo "--------------------"
 ls -lh demo.log
 time ../mackerel-plugin-axslog --key-prefix demo --logfile demo.log --ptime-key=reqtime
 
@@ -17,6 +18,7 @@ rm -f demo.log
 perl ./demo.pl demo.log 10
 ./mackerel-plugin-accesslog --format ltsv demo.log
 perl ./demo.pl demo.log 1200000
-sleep 1
+#sleep 1
+echo "--------------------"
 ls -lh demo.log
 time ./mackerel-plugin-accesslog --format ltsv demo.log

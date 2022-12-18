@@ -3,79 +3,56 @@ package ltsvreader
 import (
 	"bytes"
 
+	"github.com/kazeburo/ltsvparser"
 	"github.com/kazeburo/mackerel-plugin-axslog/axslog"
 )
 
 // Reader struct
 type Reader struct {
-	bytePtimeKey   []byte
-	byteStatusKeys [][]byte
+	keys [][]byte
 }
 
 // New :
 func New(ptimeKey string, statusKeys []string) *Reader {
-	byteStatusKey := make([][]byte, 0)
+	keys := make([][]byte, 0)
+	keys = append(keys, []byte(ptimeKey))
 	for _, stKey := range statusKeys {
-		byteStatusKey = append(byteStatusKey, []byte(stKey))
+		keys = append(keys, []byte(stKey))
 	}
-	return &Reader{[]byte(ptimeKey), byteStatusKey}
+	return &Reader{keys}
 }
 
-var bTab = []byte("\t")
-var bCol = []byte(":")
 var bHif = []byte("-")
 
-// Parse :
-func (r *Reader) Parse(d1 []byte) (int, []byte, []byte) {
+// Parse
+func (r *Reader) Parse(data []byte) (int, []byte, []byte) {
 	c := 0
 	var pt []byte
 	var st []byte
-	p1 := 0
-	dlen := len(d1)
-	stIndex := len(r.byteStatusKeys)
-PARSE_LTSV:
-	for {
-		if dlen == p1 {
-			break
-		}
-		p2 := bytes.Index(d1[p1:], bTab)
-		if p2 < 0 {
-			p2 = dlen - p1 - 1
-		}
-		p3 := bytes.Index(d1[p1:p1+p2], bCol)
-		if p3 < 0 {
-			break
-		}
-
+	stIndex := len(r.keys)
+	ltsvparser.Each(data, func(idx int, value []byte) error {
 		// `-` はskip
-		if bytes.Equal(d1[p1+p3+1:p1+p2], bHif) {
-			p1 += p2 + 1
-			continue
+		if bytes.Equal(value, bHif) || len(value) == 0 {
+			return nil
 		}
-
-		if bytes.Equal(d1[p1:p1+p3], r.bytePtimeKey) {
-			pt = d1[p1+p3+1 : p1+p2]
+		switch {
+		case idx == 0:
+			//ptime
 			c = c | axslog.PtimeFlag
-			if c == axslog.AllFlagOK {
-				break PARSE_LTSV
+			pt = value
+		case idx > 0:
+			//status
+			c = c | axslog.StatusFlag
+			if idx < stIndex {
+				stIndex = idx
+				st = value
 			}
 		}
-
-		for idx, stKey := range r.byteStatusKeys {
-			if bytes.Equal(d1[p1:p1+p3], stKey) {
-				if idx < stIndex {
-					stIndex = idx
-					st = d1[p1+p3+1 : p1+p2]
-				}
-				if stIndex == 0 {
-					c = c | axslog.StatusFlag
-				}
-				if c == axslog.AllFlagOK {
-					break PARSE_LTSV
-				}
-			}
+		if c == axslog.AllFlagOK {
+			return ltsvparser.Cancel
 		}
-		p1 += p2 + 1
-	}
+		return nil
+	}, r.keys...)
 	return c, pt, st
+
 }
