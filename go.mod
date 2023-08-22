@@ -8,5 +8,5 @@ require (
 	github.com/kazeburo/ltsvparser v0.2.0
 	github.com/mackerelio/golib v1.2.1
 	github.com/pkg/errors v0.9.1
-	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 )
