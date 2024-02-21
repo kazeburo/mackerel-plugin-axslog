@@ -19,6 +19,8 @@ jobs:
 
       - name: test
         run: make check
+        env:
+          CGO_ENABLED: 0
 
       - name: Snapshot GoReleaser
         uses: goreleaser/goreleaser-action@v5
