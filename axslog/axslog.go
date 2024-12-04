@@ -3,7 +3,6 @@ package axslog
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,6 +11,8 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/avast/retry-go"
 )
 
 // PtimeFlag : ptime is exists
@@ -96,7 +97,7 @@ func (fstat *FStat) IsNotRotated(lastFstat *FStat) bool {
 
 // SearchFileByInode :
 func SearchFileByInode(d string, fstat *FStat) (string, error) {
-	files, err := ioutil.ReadDir(d)
+	files, err := os.ReadDir(d)
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +105,11 @@ func SearchFileByInode(d string, fstat *FStat) (string, error) {
 		if file.IsDir() {
 			continue
 		}
-		s, _ := FileStat(file)
+		fi, err := file.Info()
+		if err != nil {
+			return "", err
+		}
+		s, _ := FileStat(fi)
 		if s.Inode == fstat.Inode && s.Dev == fstat.Dev {
 			return filepath.Join(d, file.Name()), nil
 		}
@@ -126,20 +131,35 @@ func WritePos(filename string, pos int64, fstat *FStat) (float64, error) {
 		return now, err
 	}
 	_, err = file.Write(jb)
-	return now, err
+	if err != nil {
+		return now, err
+	}
+	return now, file.Sync()
 }
 
 // ReadPos :
 func ReadPos(filename string) (int64, float64, *FStat, error) {
 	fp := FilePos{}
-	d, err := ioutil.ReadFile(filename)
+	err := retry.Do(
+		func() error {
+			d, err := os.ReadFile(filename)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(d, &fp)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+		retry.Attempts(3),
+		retry.DelayType(retry.FixedDelay),
+		retry.Delay(100*time.Millisecond),
+	)
 	if err != nil {
 		return 0, 0, &FStat{}, err
 	}
-	err = json.Unmarshal(d, &fp)
-	if err != nil {
-		return 0, 0, &FStat{}, err
-	}
+
 	return fp.Pos, fp.Time, &FStat{fp.Inode, fp.Dev}, nil
 }
 
