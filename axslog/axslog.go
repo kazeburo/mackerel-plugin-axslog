@@ -114,7 +114,7 @@ func SearchFileByInode(d string, fstat *FStat) (string, error) {
 			return filepath.Join(d, file.Name()), nil
 		}
 	}
-	return "", fmt.Errorf("There is no file by inode:%d in %s", fstat.Inode, d)
+	return "", fmt.Errorf("there is no file by inode:%d in %s", fstat.Inode, d)
 }
 
 // WritePos :
@@ -246,24 +246,14 @@ func (s *Stats) Display(keyPrefix string) {
 	}
 }
 
-// SFloat64 :
-func SFloat64(val string) (float64, error) {
-	return strconv.ParseFloat(val, 64)
-}
-
-// SInt :
-func SInt(val string) (int, error) {
-	return strconv.Atoi(val)
-}
-
 // BFloat64 :
 func BFloat64(b []byte) (float64, error) {
-	return strconv.ParseFloat(*(*string)(unsafe.Pointer(&b)), 64)
+	return strconv.ParseFloat(unsafe.String(unsafe.SliceData(b), len(b)), 64)
 }
 
 // BInt :
 func BInt(b []byte) (int, error) {
-	return strconv.Atoi(*(*string)(unsafe.Pointer(&b)))
+	return strconv.Atoi(unsafe.String(unsafe.SliceData(b), len(b)))
 }
 
 // DisplayAll :
