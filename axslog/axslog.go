@@ -30,8 +30,9 @@ type CmdOpts struct {
 	KeyPrefix        string   `long:"key-prefix" description:"Metric key prefix" required:"true"`
 	PtimeKey         string   `long:"ptime-key" default:"ptime" description:"key name for request_time"`
 	StatusKeys       []string `long:"status-key" default:"status" description:"key name for response status"`
-	Filter           string   `long:"filter" default:"" description:"text for filtering log"`
+	Filter           string   `long:"filter" default:"" description:"select lines contain a specified text from log"`
 	SkipUntilBracket bool     `long:"skip-until-json" description:"skip reading until first { for json log with plain text header"`
+	InvertFilter     bool     `long:"invert-filter" description:"select lines don't contain a specified text from log if a filter is specified"`
 	Version          bool     `short:"v" long:"version" description:"Show version"`
 }
 
