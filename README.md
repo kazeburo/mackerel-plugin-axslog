@@ -18,8 +18,9 @@ Application Options:
       --key-prefix=      Metric key prefix
       --ptime-key=       key name for request_time (default: ptime)
       --status-key=      key name for response status (default: status)
-      --filter=          text for filtering log
+      --filter=          select lines contain a specified text from log
       --skip-until-json  skip reading until first { for json log with plain text header
+      --invert-filter    select lines don't contain a specified text from log if a filter is specified
   -v, --version          Show version
 
 Help Options:
