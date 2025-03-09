@@ -46,8 +46,14 @@ func parseLog(bs *bufio.Scanner, r axslog.Reader, opts axslog.CmdOpts) (float64,
 	for bs.Scan() {
 		b := bs.Bytes()
 		if len(filter) > 0 {
-			if !bytes.Contains(b, filter) {
-				continue
+			if opts.InvertFilter {
+				if bytes.Contains(b, filter) {
+					continue
+				}
+			} else {
+				if !bytes.Contains(b, filter) {
+					continue
+				}
 			}
 		}
 		if opts.SkipUntilBracket {
