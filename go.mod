@@ -1,8 +1,8 @@
 module github.com/kazeburo/mackerel-plugin-axslog
 
-go 1.21
+go 1.23.0
 
-toolchain go1.21.5
+toolchain go1.23.4
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -15,5 +15,5 @@ require (
 
 require (
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 )
