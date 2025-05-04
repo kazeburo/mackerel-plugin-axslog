@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.4.5](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.4...v0.4.5) - 2025-05-04
+- update readme by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/34
+- fix workflow permission and update deps by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/36
+
 ## [v0.4.4](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.3...v0.4.4) - 2025-03-09
 - update deps by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/27
 - use unsafe.String by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/28
