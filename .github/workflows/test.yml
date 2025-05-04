@@ -6,12 +6,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+      - uses: actions/checkout@v4
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
@@ -27,3 +25,5 @@ jobs:
         with:
           version: latest
           args: build --snapshot
+        env:
+          CGO_ENABLED: 0
