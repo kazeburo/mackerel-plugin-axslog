@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.4.6](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.5...v0.4.6) - 2025-10-13
+- use clean for goreleaser by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/37
+- pin actions commithash by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/39
+- Feature/use follow parser by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/40
+
 ## [v0.4.5](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.4...v0.4.5) - 2025-05-04
 - update readme by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/34
 - fix workflow permission and update deps by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/36
