@@ -1,18 +1,12 @@
 package axslog
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
-	"syscall"
 	"time"
 	"unsafe"
-
-	"github.com/avast/retry-go"
 )
 
 // PtimeFlag : ptime is exists
@@ -60,108 +54,6 @@ type StatsCh struct {
 	Stats   *Stats
 	Logfile string
 	Err     error
-}
-
-// FilePos :
-type FilePos struct {
-	Pos   int64   `json:"pos"`
-	Time  float64 `json:"time"`
-	Inode uint64  `json:"inode"`
-	Dev   uint64  `json:"dev"`
-}
-
-// FStat :
-type FStat struct {
-	Inode uint64
-	Dev   uint64
-}
-
-// FileExists :
-func FileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	return err == nil
-}
-
-// FileStat :
-func FileStat(s os.FileInfo) (*FStat, error) {
-	s2 := s.Sys().(*syscall.Stat_t)
-	if s2 == nil {
-		return &FStat{}, fmt.Errorf("Could not get Inode")
-	}
-	return &FStat{s2.Ino, uint64(s2.Dev)}, nil
-}
-
-// IsNotRotated :
-func (fstat *FStat) IsNotRotated(lastFstat *FStat) bool {
-	return lastFstat.Inode == 0 || lastFstat.Dev == 0 || (fstat.Inode == lastFstat.Inode && fstat.Dev == lastFstat.Dev)
-}
-
-// SearchFileByInode :
-func SearchFileByInode(d string, fstat *FStat) (string, error) {
-	files, err := os.ReadDir(d)
-	if err != nil {
-		return "", err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fi, err := file.Info()
-		if err != nil {
-			return "", err
-		}
-		s, _ := FileStat(fi)
-		if s.Inode == fstat.Inode && s.Dev == fstat.Dev {
-			return filepath.Join(d, file.Name()), nil
-		}
-	}
-	return "", fmt.Errorf("there is no file by inode:%d in %s", fstat.Inode, d)
-}
-
-// WritePos :
-func WritePos(filename string, pos int64, fstat *FStat) (float64, error) {
-	now := float64(time.Now().Unix())
-	fp := FilePos{pos, now, fstat.Inode, fstat.Dev}
-	file, err := os.Create(filename)
-	if err != nil {
-		return now, err
-	}
-	defer file.Close()
-	jb, err := json.Marshal(fp)
-	if err != nil {
-		return now, err
-	}
-	_, err = file.Write(jb)
-	if err != nil {
-		return now, err
-	}
-	return now, file.Sync()
-}
-
-// ReadPos :
-func ReadPos(filename string) (int64, float64, *FStat, error) {
-	fp := FilePos{}
-	err := retry.Do(
-		func() error {
-			d, err := os.ReadFile(filename)
-			if err != nil {
-				return err
-			}
-			err = json.Unmarshal(d, &fp)
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-		retry.Attempts(3),
-		retry.DelayType(retry.FixedDelay),
-		retry.Delay(100*time.Millisecond),
-	)
-	if err != nil {
-		return 0, 0, &FStat{}, err
-	}
-
-	return fp.Pos, fp.Time, &FStat{fp.Inode, fp.Dev}, nil
 }
 
 func round(f float64) int64 {
