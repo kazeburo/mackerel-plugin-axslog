@@ -53,7 +53,7 @@ func (p *parser) Parse(b []byte) error {
 	}
 	if p.opts.SkipUntilBracket {
 		i := bytes.IndexByte(b, '{')
-		if i > 0 {
+		if i >= 0 {
 			b = b[i:]
 		}
 	}
