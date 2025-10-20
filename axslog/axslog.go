@@ -189,7 +189,7 @@ func DisplayAll(statsAll []*Stats, keyPrefix string) {
 		fmt.Printf("axslog.latency_%s.90_percentile\t%f\t%d\n", keyPrefix, f64s[round(fl*0.90)], now)
 	}
 
-	if allDutrainNG == false {
+	if !allDutrainNG {
 		fmt.Printf("axslog.access_num_%s.1xx_count\t%f\t%d\n", keyPrefix, c1xx, now)
 		fmt.Printf("axslog.access_num_%s.2xx_count\t%f\t%d\n", keyPrefix, c2xx, now)
 		fmt.Printf("axslog.access_num_%s.3xx_count\t%f\t%d\n", keyPrefix, c3xx, now)
