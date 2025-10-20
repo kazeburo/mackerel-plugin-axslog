@@ -9,9 +9,9 @@ require (
 	github.com/mackerelio/golib v1.2.1
 )
 
-require github.com/avast/retry-go/v4 v4.6.1 // indirect
+require github.com/avast/retry-go/v4 v4.7.0 // indirect
 
 require (
-	github.com/kazeburo/followparser v0.2.8
+	github.com/kazeburo/followparser v0.2.9
 	golang.org/x/sys v0.37.0 // indirect
 )
