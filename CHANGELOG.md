@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.4.7](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.6...v0.4.7) - 2025-10-20
+- update deps by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/41
+
 ## [v0.4.6](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.5...v0.4.6) - 2025-10-13
 - use clean for goreleaser by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/37
 - pin actions commithash by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/39
