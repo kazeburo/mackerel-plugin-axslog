@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.4.8](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.7...v0.4.8) - 2026-02-16
+- Create dependabot.yml by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/44
+- ci: bump the dependencies group with 4 updates by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/47
+- go: bump github.com/kazeburo/followparser from 0.2.9 to 0.2.10 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/46
+
 ## [v0.4.7](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.6...v0.4.7) - 2025-10-20
 - update deps by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/41
 
