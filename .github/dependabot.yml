@@ -1,0 +1,24 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: "ci:"
+    groups:
+      dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: "go:"
+    groups:
+      dependencies:
+        patterns:
+          - '*'
