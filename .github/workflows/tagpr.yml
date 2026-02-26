@@ -12,13 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
 
-      - uses: Songmu/tagpr@da82ed6743aec90049892070edd5561335904a9e # v1
+      - uses: Songmu/tagpr@b3fb89424646b06c8aa460f50307c60b6a541425 # v1
         id: tagpr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v4
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v4
         with:
           go-version-file: go.mod
         if: ${{ steps.tagpr.outputs.tag != ''}}
