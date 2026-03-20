@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.4.9](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.8...v0.4.9) - 2026-03-20
+- ci: bump goreleaser/goreleaser-action from 6.4.0 to 7.0.0 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/48
+- go: bump github.com/buger/jsonparser from 1.1.2-0.20220418200129-61b32cfdfa0f to 1.1.2 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/51
+- ci: bump the dependencies group with 2 updates by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/50
+
 ## [v0.4.8](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.7...v0.4.8) - 2026-02-16
 - Create dependabot.yml by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/44
 - ci: bump the dependencies group with 4 updates by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/47
