@@ -12,8 +12,8 @@ github.com/kazeburo/followparser v0.2.10 h1:jcGVgBAUjZppgaf7FudhkLZJirUHih10bV5k
 github.com/kazeburo/followparser v0.2.10/go.mod h1:JrkE1cR6+cq1ZFPQykgcBh6wfJD3x6Zi7iJ2ITSQmMo=
 github.com/kazeburo/ltsvparser v0.2.0 h1:+G2YX/UYKZTrw5Dot4ezmv4Kk/zkUo+F1F0NxBEXcmc=
 github.com/kazeburo/ltsvparser v0.2.0/go.mod h1:eO7lPSUzkFXDVt4MPVGe9AHvCE7CbAGr0o3dfC7zXe8=
-github.com/mackerelio/golib v1.2.1 h1:SDcDn6Jw3p9bi1N0bg1Z/ilG5qcBB23qL8xNwrU0gg4=
-github.com/mackerelio/golib v1.2.1/go.mod h1:b8ZaapsHGH1FlEJlCqfD98CqafLeyMevyATDlID2BsM=
+github.com/mackerelio/golib v1.2.2 h1:fQfW1o2KvPyIsAH/7+M2J0gpf2jLu+NyYpDCN79zxW4=
+github.com/mackerelio/golib v1.2.2/go.mod h1:itcSOfrsT5XvkzflFPebT43RrliaKDz2T6YGYt3jclw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
