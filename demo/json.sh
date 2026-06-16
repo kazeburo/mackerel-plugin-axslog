@@ -11,7 +11,7 @@ perl ./json.pl json.log 1200000
 #sleep 1\echo "--------------------"
 
 ls -lh json.log
-time ../mackerel-plugin-axslog --key-prefix json --logfile json.log --ptime-key=reqtime --format json ---filter example
+time ../mackerel-plugin-axslog --key-prefix json --logfile json.log --ptime-key=reqtime --format json --filter example --max-read-size 1G
 
 echo "--------------------"
 

@@ -12,6 +12,7 @@ require (
 require github.com/avast/retry-go/v4 v4.7.0 // indirect
 
 require (
+	github.com/dustin/go-humanize v1.0.1
 	github.com/kazeburo/followparser v0.2.10
 	golang.org/x/sys v0.37.0 // indirect
 )
