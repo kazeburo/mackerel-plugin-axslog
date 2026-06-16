@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/dustin/go-humanize"
 )
 
 // PtimeFlag : ptime is exists
@@ -18,16 +20,30 @@ var StatusFlag = 2
 // AllFlagOK : all OK
 var AllFlagOK = 3
 
+// HumanBytes is a custom type to handle human-readable byte inputs
+type HumanBytes uint64
+
+// UnmarshalFlag parses human inputs like "10MB" or "2GiB" using go-humanize
+func (hb *HumanBytes) UnmarshalFlag(value string) error {
+	bytes, err := humanize.ParseBytes(value)
+	if err != nil {
+		return err
+	}
+	*hb = HumanBytes(bytes)
+	return nil
+}
+
 type CmdOpts struct {
-	LogFile          string   `long:"logfile" description:"path to nginx ltsv logfiles. multiple log files can be specified, separated by commas." required:"true"`
-	Format           string   `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
-	KeyPrefix        string   `long:"key-prefix" description:"Metric key prefix" required:"true"`
-	PtimeKey         string   `long:"ptime-key" default:"ptime" description:"key name for request_time"`
-	StatusKeys       []string `long:"status-key" default:"status" description:"key name for response status"`
-	Filter           string   `long:"filter" default:"" description:"select lines contain a specified text from log"`
-	SkipUntilBracket bool     `long:"skip-until-json" description:"skip reading until first { for json log with plain text header"`
-	InvertFilter     bool     `long:"invert-filter" description:"select lines don't contain a specified text from log if a filter is specified"`
-	Version          bool     `short:"v" long:"version" description:"Show version"`
+	LogFile          string     `long:"logfile" description:"path to nginx ltsv logfiles. multiple log files can be specified, separated by commas." required:"true"`
+	Format           string     `long:"format" default:"ltsv" description:"format of logfile. support json and ltsv"`
+	KeyPrefix        string     `long:"key-prefix" description:"Metric key prefix" required:"true"`
+	PtimeKey         string     `long:"ptime-key" default:"ptime" description:"key name for request_time"`
+	StatusKeys       []string   `long:"status-key" default:"status" description:"key name for response status"`
+	Filter           string     `long:"filter" default:"" description:"select lines contain a specified text from log"`
+	SkipUntilBracket bool       `long:"skip-until-json" description:"skip reading until first { for json log with plain text header"`
+	InvertFilter     bool       `long:"invert-filter" description:"select lines don't contain a specified text from log if a filter is specified"`
+	MaxReadSize      HumanBytes `long:"max-read-size" description:"maximum size of log file to read"`
+	Version          bool       `short:"v" long:"version" description:"Show version"`
 }
 
 // Reader :
