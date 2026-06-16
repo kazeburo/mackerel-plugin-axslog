@@ -33,14 +33,18 @@ func getFileStats(opts *axslog.CmdOpts, posFile, logFile string) (*axslog.Stats,
 	if opts.Format != "ltsv" && opts.Format != "json" {
 		return stats, fmt.Errorf("format %s is not supported", opts.Format)
 	}
-	maxReadSize := int64(opts.MaxReadSize)
-	if maxReadSize == 0 {
+	maxReadSizeU := uint64(opts.MaxReadSize)
+	if maxReadSizeU == 0 {
 		if opts.Format == "ltsv" {
-			maxReadSize = maxReadSizeLTSV
+			maxReadSizeU = uint64(maxReadSizeLTSV)
 		} else {
-			maxReadSize = maxReadSizeJSON
+			maxReadSizeU = uint64(maxReadSizeJSON)
 		}
 	}
+	if maxReadSizeU > uint64(^uint64(0)>>1) {
+		return stats, fmt.Errorf("max-read-size %d overflows int64", maxReadSizeU)
+	}
+	maxReadSize := int64(maxReadSizeU)
 
 	parser := NewParser(opts, stats)
 	fp := &followparser.Parser{
