@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.4.10](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.9...v0.4.10) - 2026-06-16
+
+- ci: bump actions/setup-go from 6.3.0 to 6.4.0 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/52
+- ci: bump Songmu/tagpr from 1.17.1 to 1.18.1 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/54
+- go: bump github.com/mackerelio/golib from 1.2.1 to 1.2.2 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/55
+- ci: bump Songmu/tagpr from 1.18.1 to 1.18.2 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/56
+- ci: bump the dependencies group with 2 updates by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/57
+- go: bump github.com/buger/jsonparser from 1.1.2 to 1.2.0 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/58
+- ci: bump the dependencies group across 1 directory with 2 updates by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/60
+- ci: bump the dependencies group across 1 directory with 3 updates by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/63
+- max-read-size option by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/64
+
 ## [v0.4.9](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.8...v0.4.9) - 2026-03-20
 - ci: bump goreleaser/goreleaser-action from 6.4.0 to 7.0.0 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/48
 - go: bump github.com/buger/jsonparser from 1.1.2-0.20220418200129-61b32cfdfa0f to 1.1.2 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/51
