@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.4.11](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.10...v0.4.11) - 2026-06-18
+
+- Add cooldown settings to dependabot configuration by @kazeburo in https://github.com/kazeburo/mackerel-plugin-axslog/pull/65
+
 ## [v0.4.10](https://github.com/kazeburo/mackerel-plugin-axslog/compare/v0.4.9...v0.4.10) - 2026-06-16
 
 - ci: bump actions/setup-go from 6.3.0 to 6.4.0 in the dependencies group by @dependabot[bot] in https://github.com/kazeburo/mackerel-plugin-axslog/pull/52
