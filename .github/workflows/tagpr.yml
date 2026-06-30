@@ -10,7 +10,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
       - uses: Songmu/tagpr@e84001bd5dac8defa0c75b3913937d284a3b3660 # v1
         id: tagpr
@@ -18,7 +18,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v4
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v4
         with:
           go-version-file: go.mod
         if: ${{ steps.tagpr.outputs.tag != ''}}
