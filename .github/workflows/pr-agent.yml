@@ -15,7 +15,7 @@ jobs:
         if: ${{ github.event.sender.type != 'Bot' }}
         steps:
             - name: PR Agent action step
-              uses: the-pr-agent/pr-agent@f6af7d77554ff8d26adffded077e6461329e92fa # v0.42.0
+              uses: the-pr-agent/pr-agent@ab6ec54bfeb37933ddb74259338752e9272016c6 # v0.44.0
               env:
                   OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
                   OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
