@@ -9,6 +9,8 @@ updates:
       prefix: "ci:"
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "the-pr-agent/pr-agent"
     groups:
       dependencies:
         patterns:
