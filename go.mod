@@ -1,6 +1,6 @@
 module github.com/monitoring-forge/mackerel-plugin-axslog
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/buger/jsonparser v1.6.1
@@ -22,5 +22,5 @@ require (
 	github.com/monitoring-forge/followparser v0.2.16
 	github.com/monitoring-forge/ltsvparser v0.2.8
 	github.com/montanaflynn/stats v0.12.5
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
